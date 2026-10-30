@@ -1,0 +1,2712 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>BLACKWOOD</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#171719;color:#eee;font-family:monospace;touch-action:none}
+#game{position:fixed;inset:0}
+canvas{display:block}
+#hud{position:fixed;top:14px;left:14px;z-index:3;font-size:11px;letter-spacing:2px;text-shadow:1px 2px #000;pointer-events:none}
+#survivalHud{position:fixed;top:42px;left:14px;z-index:5;display:flex;flex-direction:column;gap:7px;pointer-events:none;font-family:monospace}
+.stat-card{width:174px;padding:7px 9px 9px;background:linear-gradient(135deg,#07111bdc,#10151bd9);border:1px solid #71808a66;box-shadow:0 3px 14px #0009;backdrop-filter:blur(3px)}
+.stat-head{display:flex;align-items:center;justify-content:space-between;font-size:10px;letter-spacing:1.6px;color:#c8d3dc;margin-bottom:6px}
+.stat-value{font-size:9px;color:#aeb9c3;letter-spacing:1px}
+.bar-track{height:7px;background:#090d12;border:1px solid #53616c88;overflow:hidden}
+.bar-fill{height:100%;width:100%;transition:width .16s linear}
+#staminaFill{background:linear-gradient(90deg,#1674c8,#55c9ff);box-shadow:0 0 9px #36aaff88}
+#sanityFill{background:linear-gradient(90deg,#542477,#bd7de8);box-shadow:0 0 9px #a75de688}
+#heartIcon{display:inline-block;color:#65caff;font-size:17px;line-height:12px;transform-origin:center;animation:heartBeat 1.05s infinite}
+#brainIcon{font-size:15px;color:#c78ce8}
+@keyframes heartBeat{0%,100%{transform:scale(1)}15%{transform:scale(1.18)}28%{transform:scale(1)}42%{transform:scale(1.12)}58%{transform:scale(1)}}
+#crosshair{position:fixed;top:50%;left:50%;width:4px;height:4px;background:white;transform:translate(-50%,-50%);pointer-events:none}
+#hint{display:none!important}
+#vignette{position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse,transparent 55%,#0007 100%)}
+#blink{position:fixed;inset:0;z-index:7;background:#000;opacity:0;pointer-events:none}
+#start{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#111216;text-align:center;padding:20px}
+#start h1{font-size:clamp(38px,8vw,78px);font-weight:400;letter-spacing:9px;margin:0 0 12px}
+#start p{font-size:11px;letter-spacing:2px;color:#aaa;line-height:2}
+#loadingStatus{min-height:22px;margin:18px 0 8px;color:#c9c9c9;font-size:12px;letter-spacing:2px;text-shadow:0 0 12px #ffffff33}
+#play{display:none;opacity:0;transform:translateY(8px);transition:opacity .6s ease,transform .6s ease}
+#play.ready{display:inline-block;opacity:1;transform:translateY(0)}
+#studioCredit{margin-top:16px;color:#777;font-size:10px;letter-spacing:3px;transform-style:preserve-3d;animation:studioSpin 7s linear infinite;text-shadow:0 0 9px #ffffff22}
+@keyframes studioSpin{from{transform:perspective(500px) rotateY(0deg)}to{transform:perspective(500px) rotateY(360deg)}}
+button{font-family:monospace;color:#fff;background:#24252b;border:1px solid #aaa;touch-action:none;user-select:none;-webkit-user-select:none}
+#play{padding:15px 32px;letter-spacing:3px;margin:18px;cursor:pointer}
+#mobile{display:none;position:fixed;inset:0;z-index:4;pointer-events:none}
+#joystick{position:absolute;left:22px;bottom:28px;width:142px;height:142px;border:2px solid #ffffff75;border-radius:50%;background:#2225;pointer-events:auto;touch-action:none}
+#stick{position:absolute;left:43px;top:43px;width:52px;height:52px;border-radius:50%;background:#d0d0d080;border:2px solid #fff9;pointer-events:none}
+#rightControls{position:absolute;right:18px;bottom:28px;pointer-events:auto}
+#interact{width:70px;height:70px;border-radius:50%;font-size:11px;background:#333d;border:1px solid #ffffffa0}
+#flashlightBtn{display:none;width:62px;height:62px;margin:0 4px 12px auto;border-radius:50%;font-size:24px;background:#18202ddd;border:1px solid #dce8ff99;box-shadow:0 0 14px #9bbce633;pointer-events:auto}
+#flashlightBtn.on{background:#c5d9f0;color:#101722;box-shadow:0 0 22px #c5d9f088}
+#rightControls{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+#utilityControls{display:flex;flex-direction:row;align-items:center;gap:10px}
+#utilityControls #flashlightBtn{margin:0;width:58px;height:58px}
+#utilityControls #crouchBtn{width:70px;height:58px}
+#crouchBtn{width:70px;height:54px;border-radius:16px;font-size:11px;letter-spacing:1px;background:#252a30dd;border:1px solid #cbd3dc99;box-shadow:0 3px 12px #0008}
+#crouchBtn.active{background:#b7c5d0;color:#111;border-color:#fff}
+#lookArea{position:absolute;left:43%;right:0;top:0;bottom:0;pointer-events:auto;touch-action:none}
+#subtitle{position:fixed;z-index:8;left:50%;bottom:12%;transform:translateX(-50%);width:max-content;max-width:min(88vw,680px);min-height:0;padding:11px 19px;background:linear-gradient(135deg,rgba(8,12,16,.94),rgba(20,25,30,.91));border:1px solid #a9b6c044;border-left:3px solid #aeb8c4;color:#f3f1eb;font-size:14px;line-height:1.65;letter-spacing:.55px;text-align:center;text-shadow:1px 2px 3px #000;box-shadow:0 8px 28px #0008, inset 0 0 18px #ffffff08;backdrop-filter:blur(7px);border-radius:5px;pointer-events:none;opacity:0;transition:opacity .25s}
+#subtitle.visible{opacity:1}
+#tearOverlay{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;overflow:hidden;transition:opacity 1s}
+#tearOverlay.active{opacity:1}
+.tear{position:absolute;top:-12%;width:3px;height:24vh;border-radius:0 0 5px 5px;background:linear-gradient(180deg,#9bdcff00,#9bdcffaa,#d8f4ff22);filter:blur(.5px);animation:tearFall 2.4s linear infinite}
+.tear:nth-child(1){left:23%;animation-delay:0s}.tear:nth-child(2){left:31%;height:17vh;animation-delay:.7s}.tear:nth-child(3){left:68%;height:22vh;animation-delay:1.1s}.tear:nth-child(4){left:76%;height:16vh;animation-delay:.35s}
+@keyframes tearFall{to{transform:translateY(125vh);opacity:.1}}
+#mushroomTint{position:fixed;inset:0;z-index:5;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,#70ff9a22 0%,#35d66b18 55%,#153b2c35 100%);mix-blend-mode:screen}
+#mushroomTint.active{opacity:1;animation:softHueShift 2.8s linear infinite}
+@keyframes softHueShift{0%{filter:hue-rotate(0deg)}50%{filter:hue-rotate(180deg)}100%{filter:hue-rotate(360deg)}}
+#catJumpscare{position:fixed;inset:0;z-index:20;background:#000;display:none;align-items:center;justify-content:center;pointer-events:none;overflow:hidden}
+#catJumpscare.show{display:flex;animation:catFlash .82s steps(2,end) both}
+#catJumpscare svg{width:min(92vw,780px);height:94vh;filter:drop-shadow(0 0 34px #8bffb0);transform:translateY(0) scale(1.18)}
+#catJumpscare.show svg{animation:catRush .82s cubic-bezier(.12,.78,.18,1) both}
+@keyframes catRush{0%{transform:translateY(115vh) scale(.12) rotate(-8deg);filter:drop-shadow(0 0 4px #8bffb0)}48%{transform:translateY(12vh) scale(.82) rotate(4deg)}72%{transform:translateY(-2vh) scale(1.55) rotate(-2deg)}100%{transform:translateY(0) scale(2.15) rotate(0deg);filter:drop-shadow(0 0 48px #baffc8)}}
+@keyframes catFlash{0%{opacity:0}8%{opacity:1}78%{opacity:1}100%{opacity:0}}
+#eyelids{position:fixed;inset:0;z-index:9;pointer-events:none;background:transparent;overflow:hidden;opacity:1}
+#eyelids::before,#eyelids::after{content:"";position:absolute;left:-4%;width:108%;height:56%;background:#000;will-change:transform;}
+#eyelids::before{top:0;border-radius:0 0 48% 48% / 0 0 13% 13%;transform:translateY(-105%)}
+#eyelids::after{bottom:0;border-radius:48% 48% 0 0 / 13% 13% 0 0;transform:translateY(105%)}
+#eyelids.closed::before{animation:heavyBlinkTop 3.2s cubic-bezier(.42,0,.7,1) forwards}
+#eyelids.closed::after{animation:heavyBlinkBottom 3.2s cubic-bezier(.42,0,.7,1) forwards}
+@keyframes heavyBlinkTop{0%,9%{transform:translateY(-105%)}17%{transform:translateY(-8%)}23%{transform:translateY(-105%)}34%{transform:translateY(-105%)}45%{transform:translateY(-2%)}53%{transform:translateY(-105%)}67%{transform:translateY(-105%)}82%,100%{transform:translateY(0)}}
+@keyframes heavyBlinkBottom{0%,9%{transform:translateY(105%)}17%{transform:translateY(8%)}23%{transform:translateY(105%)}34%{transform:translateY(105%)}45%{transform:translateY(2%)}53%{transform:translateY(105%)}67%{transform:translateY(105%)}82%,100%{transform:translateY(0)}}
+.subtitle-char{display:inline-block;opacity:0;animation:letterDrop .16s ease-out forwards}
+@keyframes letterDrop{0%{opacity:0;transform:translateY(-13px)}65%{opacity:1;transform:translateY(3px)}100%{opacity:1;transform:translateY(0)}}
+@media(pointer:coarse),(max-width:800px){
+#mobile{display:block}
+#hint{bottom:185px;max-width:90%;white-space:normal;line-height:1.5}
+#hud{font-size:10px}
+#start h1{letter-spacing:5px}
+#subtitle{bottom:13%;font-size:12px;max-width:90vw;padding:9px 13px;line-height:1.55}
+}
+</style>
+</head>
+<body>
+
+<div id="game"></div>
+<div id="hud">BLACKWOOD <span style="color:#ccc">| 01:47 AM</span></div>
+<div id="survivalHud" style="display:none">
+  <div class="stat-card"><div class="stat-head"><span><span id="heartIcon">♥</span> STAMINA</span><span class="stat-value" id="staminaValue">100%</span></div><div class="bar-track"><div class="bar-fill" id="staminaFill"></div></div></div>
+  <div class="stat-card"><div class="stat-head"><span><span id="brainIcon">◉</span> AKIL SAĞLIĞI</span><span class="stat-value" id="sanityValue">100%</span></div><div class="bar-track"><div class="bar-fill" id="sanityFill"></div></div></div>
+</div>
+<div id="crosshair"></div>
+<div id="hint">WASD: HAREKET · MOUSE: BAKIŞ</div>
+<div id="vignette"></div>
+<div id="mushroomTint"></div>
+<div id="blink"></div>
+<div id="subtitle"></div>
+<div id="tearOverlay"><i class="tear"></i><i class="tear"></i><i class="tear"></i><i class="tear"></i></div>
+<div id="eyelids"></div>
+<div id="catJumpscare" aria-hidden="true"><svg viewBox="0 0 500 600" xmlns="http://www.w3.org/2000/svg"><path fill="#050706" stroke="#17251c" stroke-width="8" d="M72 600Q48 500 105 414L116 250 62 75 190 151Q250 115 310 151L438 75 384 250 395 414Q452 500 428 600Z"/><path fill="#d8ffb2" d="M145 280Q190 225 232 286Q190 330 145 280ZM268 286Q310 225 355 280Q310 330 268 286Z"/><ellipse cx="190" cy="280" rx="12" ry="25" fill="#050706"/><ellipse cx="310" cy="280" rx="12" ry="25" fill="#050706"/><path d="M230 360Q250 380 270 360L250 390Z" fill="#9bff9a"/><path d="M250 390Q220 430 190 405M250 390Q280 430 310 405" fill="none" stroke="#6f9874" stroke-width="9" stroke-linecap="round"/></svg></div>
+
+<div id="mobile">
+  <div id="lookArea"></div>
+  <div id="joystick"><div id="stick"></div></div>
+  <div id="rightControls"><button id="interact">ETKİLEŞ</button><div id="utilityControls"><button id="crouchBtn" aria-label="Eğil">EĞİL</button><button id="flashlightBtn" aria-label="El fenerini aç" title="El feneri">🔦</button></div></div>
+</div>
+
+<div id="start">
+  <h1>BLACKWOOD</h1>
+  <p>01:47 AM<br>GECE SIRADAN BİR GECEYDİ.</p>
+  <div id="loadingStatus" aria-live="polite">Veriler alınıyor...</div>
+  <button id="play" type="button">OYNA</button>
+  <div id="studioCredit">MADE BY KADIR'S STUDIOS</div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const W=480,H=270;
+const renderer=new THREE.WebGLRenderer({antialias:false});
+renderer.setPixelRatio(1);
+renderer.setSize(W,H,false);
+renderer.domElement.style.width='100vw';
+renderer.domElement.style.height='100vh';
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+document.getElementById('game').appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x55535a);
+scene.fog=new THREE.Fog(0x55535a,12,25);
+
+const camera=new THREE.PerspectiveCamera(78,W/H,.1,60);
+let zoomEnabled=false;
+const normalCameraFov=78, zoomCameraFov=34;
+camera.rotation.order='YXZ';
+
+function mat(color){
+  return new THREE.MeshLambertMaterial({color,flatShading:true});
+}
+
+const M={
+  wall:mat(0xaaa49a),
+  floor:mat(0x756657),
+  wood:mat(0x79553a),
+  dark:mat(0x403027),
+  fabric:mat(0x77777c),
+  blanket:mat(0x596779),
+  metal:mat(0x85817a),
+  curtain:mat(0x565b70),
+  carpet:mat(0x827064),
+  black:mat(0x17191c)
+};
+
+function box(parent,w,h,d,material,x,y,z){
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+  mesh.position.set(x,y,z);
+  parent.add(mesh);
+  return mesh;
+}
+
+function group(parent,x=0,y=0,z=0){
+  const g=new THREE.Group();
+  g.position.set(x,y,z);
+  parent.add(g);
+  return g;
+}
+
+// IŞIKLAR
+scene.add(new THREE.HemisphereLight(0xfff1db,0x51483e,2));
+
+const roomLight=new THREE.PointLight(0xffe0b1,2.4,18);
+roomLight.position.set(0,2.8,0);
+scene.add(roomLight);
+
+const fillLight=new THREE.PointLight(0xffe9d1,1.2,12);
+fillLight.position.set(2,2.2,2);
+scene.add(fillLight);
+
+const windowLight=new THREE.PointLight(0x9eb8e8,1.1,9);
+windowLight.position.set(-3,2,-2);
+scene.add(windowLight);
+
+const pcLight=new THREE.PointLight(0x75b5ff,.8,5);
+pcLight.position.set(-1.72,1.6,2.75);
+scene.add(pcLight);
+
+// ODA
+box(scene,8,.15,8,M.floor,0,-.075,0);
+box(scene,8,.15,8,M.dark,0,3.15,0);
+box(scene,8,3.15,.15,M.wall,0,1.575,-4);
+box(scene,.15,3.15,8,M.wall,-4,1.575,0);
+box(scene,.15,3.15,8,M.wall,4,1.575,0);
+// Kapı duvarı tek düzlemde kurulur. Açıklık yalnızca kapı genişliğindedir.
+// Kapı duvarı: iki yan parça kapı kasasına tam birleşir, üst lento açıklığı kapatır.
+const doorLeft=-.625, doorRight=.925;
+const leftWallWidth=doorLeft-(-4);
+const rightWallWidth=4-doorRight;
+box(scene,leftWallWidth,3.15,.15,M.wall,(-4+doorLeft)/2,1.575,4);
+box(scene,rightWallWidth,3.15,.15,M.wall,(doorRight+4)/2,1.575,4);
+box(scene,doorRight-doorLeft,.60,.15,M.wall,(doorLeft+doorRight)/2,2.85,4);
+
+// KAPI
+const door=group(scene,.15,0,3.91);
+box(door,1.45,2.55,.10,M.dark,0,1.275,0);
+box(door,1.30,2.40,.04,M.wood,0,1.28,-.065);
+// Sade ve simetrik pervaz. Duvar yüzeyiyle aynı hizada.
+box(scene,.07,2.62,.18,M.wood,-.62,1.31,3.88);
+box(scene,.07,2.62,.18,M.wood,.92,1.31,3.88);
+box(scene,1.58,.08,.18,M.wood,.15,2.62,3.88);
+
+const knob=new THREE.Mesh(
+  new THREE.SphereGeometry(.055,8,6),
+  mat(0xc7aa67)
+);
+knob.position.set(.48,1.25,-.12);
+door.add(knob);
+
+box(scene,7.7,.12,.09,M.dark,0,.06,-3.9);
+box(scene,.09,.12,7.7,M.dark,-3.9,.06,0);
+box(scene,.09,.12,7.7,M.dark,3.9,.06,0);
+
+// PENCERE
+box(scene,.1,1.75,2.35,M.dark,-3.87,1.95,-2);
+box(scene,.04,1.52,2.12,mat(0x536782),-3.8,1.95,-2);
+box(scene,.045,1.52,.045,M.metal,-3.76,1.95,-2);
+box(scene,.045,.045,2.12,M.metal,-3.76,1.95,-2);
+
+for(let i=0;i<7;i++){
+  box(scene,.1,1.85,.34,M.curtain,-3.66,1.92,-3.12+i*.38);
+}
+
+box(scene,.12,.1,2.65,M.dark,-3.68,2.91,-2);
+
+// HALI
+box(scene,4.75,.035,3.65,M.dark,-.2,.018,.25);
+box(scene,4.6,.045,3.5,M.carpet,-.2,.045,.25);
+
+const pattern=mat(0x59483c);
+for(let i=0;i<11;i++){
+  box(scene,.035,.008,3.15,pattern,-2.35+i*.43,.072,.25);
+}
+
+box(scene,4.35,.01,.045,M.wood,-.2,.075,-1.5);
+box(scene,4.35,.01,.045,M.wood,-.2,.075,2.0);
+
+// YATAK
+const bed=group(scene,-2.625,0,-2.2);
+
+for(const x of [-1.22,1.22]){
+  for(const z of [-1.48,1.48]){
+    box(bed,.16,.42,.16,M.dark,x,.21,z);
+  }
+}
+
+box(bed,2.75,.28,3.35,M.dark,0,.45,0);
+box(bed,2.65,.2,3.22,M.fabric,0,.67,0);
+box(bed,2.57,.13,2.12,M.blanket,0,.82,.48);
+
+const pillow=mat(0xd4cbbc);
+box(bed,1,.18,.58,pillow,-.65,.84,-1.13);
+box(bed,1,.18,.58,pillow,.65,.84,-1.13);
+
+box(bed,2.9,1.25,.16,M.dark,0,.91,-1.72);
+box(bed,2.68,.92,.05,M.wood,0,.91,-1.62);
+
+// KOMODİN VE LAMBA
+const nightstand=group(scene,-.72,0,-3.48);
+box(nightstand,.95,.68,.78,M.wood,0,.38,0);
+box(nightstand,1,.08,.83,M.dark,0,.75,0);
+box(nightstand,.78,.23,.035,M.dark,0,.55,.405);
+
+const drawerKnob=new THREE.Mesh(
+  new THREE.SphereGeometry(.045,8,6),
+  mat(0xc7aa67)
+);
+drawerKnob.position.set(0,.55,.45);
+nightstand.add(drawerKnob);
+
+box(scene,.3,.07,.3,M.dark,-.72,.83,-3.48);
+box(scene,.07,.34,.07,M.metal,-.72,1.02,-3.48);
+
+const shade=new THREE.Mesh(
+  new THREE.ConeGeometry(.22,.3,8),
+  mat(0xe2c18c)
+);
+shade.position.set(-.72,1.23,-3.48);
+shade.rotation.x=Math.PI;
+scene.add(shade);
+
+// DUVAR DEKORU: Viego'nun Ruined King kılıcından esinlenen özgün fantastik kılıç.
+// Son konumu yatak üzerindeki sol duvar, 45 derece açı.
+const viegoSword=group(scene,-.72,2.12,-3.775);
+const bladeShape=new THREE.Shape();
+bladeShape.moveTo(-.075,-.02);
+bladeShape.lineTo(-.105,.18);
+bladeShape.lineTo(-.055,.72);
+bladeShape.lineTo(0,1.02);
+bladeShape.lineTo(.055,.72);
+bladeShape.lineTo(.105,.18);
+bladeShape.lineTo(.075,-.02);
+bladeShape.closePath();
+const bladeGeo=new THREE.ExtrudeGeometry(bladeShape,{depth:.035,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.012,bevelThickness:.012});
+const blade=new THREE.Mesh(bladeGeo,mat(0x78958d,{metalness:.72,roughness:.28,emissive:0x102c29,emissiveIntensity:.45}));
+blade.position.z=-.018;
+viegoSword.add(blade);
+// Kılıcın ortasındaki soluk yeşil enerji çizgisi.
+const rune=box(viegoSword,.018,.72,.012,mat(0x7ed9b0,{emissive:0x286b52,emissiveIntensity:.8}),0,.43,.045);
+// Kabza ve çapraz koruma.
+box(viegoSword,.12,.22,.075,mat(0x202a28),0,-.16,0);
+box(viegoSword,.075,.28,.08,mat(0x4a3930),0,-.31,0);
+const guard=box(viegoSword,.62,.075,.10,mat(0x3c514b,{metalness:.65,roughness:.32}),0,-.045,.015);
+guard.rotation.z=-.12;
+const pommel=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),mat(0x6b8a7c,{metalness:.55,roughness:.3}));
+pommel.position.set(0,-.48,.015);viegoSword.add(pommel);
+// İki küçük duvar askı aparatı kılıcı duvara sabitler.
+for(const y of [.22,.66]){
+  const mount=box(viegoSword,.16,.055,.10,M.dark,0,y,-.055);
+}
+
+const lampLight=new THREE.PointLight(0xffce87,.9,4);
+lampLight.position.set(-.72,1.15,-3.15);
+scene.add(lampLight);
+
+// KOLTUK: arka ve sag duvara yakin, uzatilmis uc kisilik koltuk.
+const chair=group(scene,2.62,0,-3.34);
+box(chair,2.42,.35,1.12,M.fabric,0,.45,0);
+box(chair,2.42,.92,.22,M.fabric,0,.96,-.45);
+box(chair,.22,.58,1.08,M.fabric,-1.10,.73,0);
+box(chair,.22,.58,1.08,M.fabric,1.10,.73,0);
+// Oturma minderleri.
+for(const x of [-.72,0,.72]){
+  box(chair,.72,.13,.82,M.fabric,x,.68,.08);
+}
+for(const x of [-.95,.95]){
+  for(const z of [-.40,.40]){
+    box(chair,.09,.38,.09,M.dark,x,.19,z);
+  }
+}
+
+// TEEMO TARZI MANTAR: koltuk ile komodin arasinda, duvar boyunca.
+const teemoMushroom=group(scene,.55,0,-3.34);
+const mushroomStemMat=mat(0xe2d6ad,{roughness:.82});
+const mushroomCapMat=mat(0xb83c32,{roughness:.48});
+const mushroomSpotMat=mat(0xf0e6d0,{roughness:.65});
+const mushroomBase=new THREE.Mesh(new THREE.CylinderGeometry(.25,.29,.10,18),mat(0x55483b));
+mushroomBase.position.y=.05;teemoMushroom.add(mushroomBase);
+const mushroomStem=new THREE.Mesh(new THREE.CylinderGeometry(.13,.17,.43,16),mushroomStemMat);
+mushroomStem.position.y=.30;teemoMushroom.add(mushroomStem);
+const mushroomCap=new THREE.Mesh(new THREE.SphereGeometry(.39,20,14,0,Math.PI*2,0,Math.PI*.57),mushroomCapMat);
+mushroomCap.scale.y=.72;mushroomCap.position.y=.57;teemoMushroom.add(mushroomCap);
+for(const [x,z,r] of [[-.18,-.15,.075],[.13,-.19,.06],[.23,.09,.07],[-.10,.19,.055],[0,0,.045]]){
+  const spot=new THREE.Mesh(new THREE.SphereGeometry(r,10,8),mushroomSpotMat);
+  spot.position.set(x,.72+Math.max(0,.15-Math.abs(x)*.3-Math.abs(z)*.3),z);
+  teemoMushroom.add(spot);
+}
+teemoMushroom.rotation.y=-.18;
+// Mantarın üstündeki hediye notu.
+const noteCanvas=document.createElement('canvas');
+noteCanvas.width=512;noteCanvas.height=320;
+const noteCtx=noteCanvas.getContext('2d');
+noteCtx.fillStyle='#e8dfc8';noteCtx.fillRect(0,0,512,320);
+noteCtx.strokeStyle='#9a8b70';noteCtx.lineWidth=9;noteCtx.strokeRect(9,9,494,302);
+noteCtx.fillStyle='#382b22';noteCtx.textAlign='center';
+noteCtx.font='bold 43px Georgia';noteCtx.fillText('KADİRDEN',256,137);
+noteCtx.font='bold 49px Georgia';noteCtx.fillText('HEDİYE!',256,207);
+noteCtx.strokeStyle='#b7a88b';noteCtx.lineWidth=3;noteCtx.beginPath();noteCtx.moveTo(65,245);noteCtx.lineTo(447,245);noteCtx.stroke();
+const noteTexture=new THREE.CanvasTexture(noteCanvas);
+const mushroomNote=new THREE.Mesh(
+  new THREE.PlaneGeometry(.48,.30),
+  new THREE.MeshStandardMaterial({map:noteTexture,roughness:.92,side:THREE.DoubleSide})
+);
+mushroomNote.position.set(0,.91,.27);
+mushroomNote.rotation.set(-.42,0,-.08);
+teemoMushroom.add(mushroomNote);
+// Yeşil duman parçacıkları, mantar etkinleşince görünür.
+const mushroomSmoke=[];
+const smokeMaterial=new THREE.MeshBasicMaterial({color:0x55e66b,transparent:true,opacity:0,depthWrite:false});
+for(let i=0;i<18;i++){
+  const puff=new THREE.Mesh(new THREE.SphereGeometry(.18+Math.random()*.13,10,8),smokeMaterial.clone());
+  puff.visible=false;scene.add(puff);mushroomSmoke.push({mesh:puff,phase:i/18* Math.PI*2,life:0});
+}
+let mushroomUsed=false,mushroomEffectTime=0;
+
+// Mantar etkisi sirasinda gorunen minik, ziplayan insanlar.
+const tinyPeople=[];
+const tinySkin=mat(0xe5b58d,{roughness:.9});
+const tinyClothes=[mat(0x416b9a),mat(0x9a5147),mat(0x6c8a54),mat(0x8a6aa8)];
+const tinyDark=mat(0x29232a,{roughness:.85});
+const tinyAnchors=[
+  // Koltuk minderi, ayaklar minder yuzeyine oturur.
+  [2.12,.57,-3.25],[2.75,.57,-3.18],[3.12,.57,-3.42],[3.55,.57,-3.05],
+  // Kahve masasinin ustu.
+  [2.18,.64,-1.90],[2.92,.64,-1.83],[2.45,.64,-2.18],[3.25,.12,-1.72],
+  // Odanin zemini, tum karakterlerin tabani zemine basar.
+  [.10,.12,-3.05],[.92,.12,-3.02],[1.48,.12,-2.55],[-2.15,.12,-2.75],
+  [3.45,.12,-2.45],[-3.05,.12,-1.65],[-2.65,.12,.15],[-1.45,.12,1.15],
+  [-.35,.12,1.55],[.85,.12,1.45],[2.05,.12,1.35],[3.15,.12,.95],
+  // Yatak ve diger mobilya yuzeyleri.
+  [-2.75,.72,-3.15],[-2.35,.72,-2.85],[-3.12,.82,.65],[-2.45,.82,1.05],
+  [3.45,.57,-3.55],[3.62,.57,-2.55],[1.15,.57,-3.72],[.15,.57,-3.65],
+  [-1.25,.57,-3.55],[-3.35,.12,-3.45],[3.45,.12,1.55]
+];
+const tinyPhrases=[
+  'Burası neresi?','Selam!','Beni duyabiliyor musun?','Kahve soğumuş.','Çok yüksek burası!','Kim ışığı kapattı?','Saklanalım mı?','Ben buradayım!','Bu koltuk kimin?','Muz kokusu alıyorum.','Yukarı çıkmak kolaymış.','Aşağı bakma!','Bir tur daha dönelim.','Sen de bizi görüyor musun?','Merhaba uzun insan!','Burada parti var!','Şşşt, sessiz ol.','Ben zıplamayı seviyorum.','Masa sallanıyor!','Burası çok büyük.','Bir fincan kahve isterim.','Nereye gidiyorsun?','Bizi ezme!','Şu köşeye bak!','Ben kazandım!','Hep birlikte dönelim!','Bu oda tuhaf.','Biraz dinlenelim.','Hey, buraya gel!','Görüşürüz, uzun insan!'
+];
+function makeTinyBubble(){
+  const c=document.createElement('canvas');c.width=512;c.height=128;
+  const ctx=c.getContext('2d');
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,opacity:0}));
+  sprite.scale.set(1.05,.27,1);sprite.position.y=.62;
+  return {sprite,canvas:c,ctx,texture:tex};
+}
+function drawTinyBubble(bubble,phrase){
+  const c=bubble.canvas,ctx=bubble.ctx;ctx.clearRect(0,0,c.width,c.height);
+  ctx.fillStyle='rgba(12,15,18,.88)';ctx.strokeStyle='rgba(230,240,225,.9)';ctx.lineWidth=5;
+  ctx.beginPath();ctx.roundRect(8,7,496,105,22);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#f3f5e9';ctx.font='bold 29px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  let text=phrase;if(ctx.measureText(text).width>455){while(text.length>4&&ctx.measureText(text+'…').width>455)text=text.slice(0,-1);text+='…';}
+  ctx.fillText(text,256,59);bubble.texture.needsUpdate=true;
+}
+for(let i=0;i<tinyAnchors.length;i++){
+  const person=new THREE.Group();
+  const clothes=tinyClothes[i%tinyClothes.length];
+  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.055,.075,.15,8),clothes);
+  torso.position.y=.19;person.add(torso);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.065,10,8),tinySkin);
+  head.position.y=.32;person.add(head);
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(.067,10,6,0,Math.PI*2,0,Math.PI*.55),tinyDark);
+  hair.position.y=.35;person.add(hair);
+  for(const side of [-1,1]){
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(.018,.022,.12,6),tinySkin);
+    arm.position.set(side*.075,.20,0);arm.rotation.z=side*.28;person.add(arm);
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.022,.025,.12,6),tinyDark);
+    leg.position.set(side*.035,.07,0);person.add(leg);
+  }
+  const [x,y,z]=tinyAnchors[i];
+  person.position.set(x,y,z);person.scale.setScalar(.72+(i%4)*.09);
+  const bubble=makeTinyBubble();person.add(bubble.sprite);
+  bubble.sprite.visible=false;
+  person.visible=false;scene.add(person);
+  tinyPeople.push({mesh:person,baseY:y,phase:i*1.7,spin:(i%2?1:-1)*(1.8+i%3*.35),bubble,nextSpeech:.3+Math.random()*2.8,speechTime:0,phraseIndex:-1});
+}
+
+
+// KAHVE MASASI: koltuğun önünde, halının üzerinde.
+const coffeeTable=group(scene,2.62,0,-1.92);
+box(coffeeTable,1.42,.12,.78,M.wood,0,.48,0);
+box(coffeeTable,1.32,.035,.68,M.dark,0,.555,0);
+for(const x of [-.57,.57]){
+  for(const z of [-.27,.27]){
+    box(coffeeTable,.085,.46,.085,M.dark,x,.23,z);
+  }
+}
+// Masanın üzerinde fincan ve muz.
+const cupMat=mat(0xe8e2d5,{roughness:.32});
+const coffeeMat=mat(0x342116,{roughness:.25});
+const cup=new THREE.Mesh(new THREE.CylinderGeometry(.105,.085,.17,20),cupMat);
+cup.position.set(-.34,.69,-.04);coffeeTable.add(cup);
+const coffeeSurface=new THREE.Mesh(new THREE.CircleGeometry(.087,20),coffeeMat);
+coffeeSurface.rotation.x=-Math.PI/2;coffeeSurface.position.set(-.34,.779,-.04);coffeeTable.add(coffeeSurface);
+const cupHandle=new THREE.Mesh(new THREE.TorusGeometry(.065,.018,8,18),cupMat);
+cupHandle.position.set(-.225,.70,-.04);coffeeTable.add(cupHandle);
+// Muz, kavisli sarı bir gövde ve koyu uçlarla modellenir.
+const bananaCurve=new THREE.CatmullRomCurve3([
+  new THREE.Vector3(.12,.67,-.18),new THREE.Vector3(.25,.73,-.14),
+  new THREE.Vector3(.40,.75,-.04),new THREE.Vector3(.53,.70,.08)
+]);
+const banana=new THREE.Mesh(new THREE.TubeGeometry(bananaCurve,24,.045,10,false),mat(0xf2d34b,{roughness:.48}));
+coffeeTable.add(banana);
+const bananaTipMat=mat(0x59402a);
+for(const pt of [new THREE.Vector3(.12,.67,-.18),new THREE.Vector3(.53,.70,.08)]){
+  const tip=new THREE.Mesh(new THREE.SphereGeometry(.027,8,8),bananaTipMat);tip.position.copy(pt);coffeeTable.add(tip);
+}
+
+// BİLGİSAYAR
+const computer=group(scene,-1.72,0,3.22);
+computer.rotation.y=Math.PI;
+
+box(computer,1.9,.13,.92,M.wood,0,1,0);
+
+for(const x of [-.78,.78]){
+  for(const z of [-.31,.31]){
+    box(computer,.09,1,.09,M.dark,x,.48,z);
+  }
+}
+
+box(computer,.4,.7,.52,M.black,.6,.43,-.15);
+box(computer,1.15,.78,.1,M.black,-.08,1.52,-.23);
+
+const art=document.createElement('canvas');
+art.width=128;
+art.height=80;
+
+const c=art.getContext('2d');
+c.fillStyle='#263f5b';
+c.fillRect(0,0,128,80);
+
+for(let i=0;i<18;i++){
+  c.fillStyle=i%2?'#3a5876':'#526d88';
+  c.fillRect((i*31)%128,(i*17)%80,25,4);
+}
+
+c.fillStyle='#151c25';
+c.fillRect(45,29,38,51);
+c.fillRect(49,17,29,17);
+c.fillRect(54,10,20,11);
+
+c.fillStyle='#c1ad97';
+c.fillRect(55,18,17,13);
+
+c.fillStyle='#18202b';
+c.fillRect(53,16,22,5);
+
+c.fillStyle='#d4dce5';
+c.fillRect(59,35,4,26);
+
+c.fillStyle='#fff';
+c.font='bold 10px monospace';
+c.fillText('YASUO',5,12);
+c.font='5px monospace';
+c.fillText('THE UNFORGIVEN',5,20);
+
+const tex=new THREE.CanvasTexture(art);
+tex.magFilter=THREE.NearestFilter;
+tex.minFilter=THREE.NearestFilter;
+tex.colorSpace=THREE.SRGBColorSpace;
+
+const screen=new THREE.Mesh(
+  new THREE.PlaneGeometry(1.02,.65),
+  new THREE.MeshBasicMaterial({map:tex})
+);
+screen.position.set(-.08,1.52,-.171);
+computer.add(screen);
+
+box(computer,.12,.2,.12,M.metal,-.08,1.08,-.23);
+box(computer,.4,.045,.24,M.metal,-.08,1,-.23);
+box(computer,.66,.045,.24,M.black,-.08,1.1,.17);
+// Günlük kullanım detayları: klavye, fare, hoparlör ve küçük masa lambası.
+const mouseMat=mat(0x292b2d);
+const mouse=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),mouseMat);
+mouse.scale.set(.8,.42,1.25);
+mouse.position.set(.55,1.105,.22);
+computer.add(mouse);
+box(computer,.035,.012,.22,M.metal,.55,1.14,.22);
+for(const sx of [-.78,.78]){
+  const speaker=group(computer,sx,1.12,-.22);
+  box(speaker,.16,.28,.18,M.black,0,.14,0);
+  const cone=new THREE.Mesh(new THREE.CircleGeometry(.045,10),mat(0x66717a));
+  cone.position.set(0,.15,.094);
+  speaker.add(cone);
+}
+const deskLamp=group(computer,-.72,1.08,-.28);
+box(deskLamp,.24,.035,.2,M.dark,0,0,0);
+box(deskLamp,.045,.32,.045,M.metal,0,.17,0);
+const lampArm=box(deskLamp,.045,.24,.045,M.metal,.07,.39,0);
+lampArm.rotation.z=-.55;
+const deskShade=new THREE.Mesh(new THREE.ConeGeometry(.13,.15,8),mat(0xb59b70));
+deskShade.position.set(.13,.53,0);
+deskShade.rotation.z=Math.PI;
+deskLamp.add(deskShade);
+
+// SAAT
+const clockBack=new THREE.Mesh(
+  new THREE.CylinderGeometry(.34,.34,.1,12),
+  M.dark
+);
+clockBack.rotation.x=Math.PI/2;
+clockBack.position.set(0,2.38,-3.82);
+scene.add(clockBack);
+
+const clockFace=new THREE.Mesh(
+  new THREE.CircleGeometry(.29,12),
+  mat(0xf0e5d0)
+);
+clockFace.position.set(0,2.38,-3.755);
+scene.add(clockFace);
+
+const handMat=new THREE.MeshBasicMaterial({color:0x201b18});
+
+function clockHand(length,angle,width){
+  const h=new THREE.Mesh(
+    new THREE.BoxGeometry(width,length,.015),
+    handMat
+  );
+  h.position.set(
+    Math.sin(angle)*length/2,
+    2.38+Math.cos(angle)*length/2,
+    -3.735
+  );
+  h.rotation.z=-angle;
+  scene.add(h);
+}
+
+clockHand(.18,1,.025);
+clockHand(.25,2.8,.018);
+
+for(let i=0;i<12;i++){
+  const a=i*Math.PI/6;
+  const dot=new THREE.Mesh(
+    new THREE.BoxGeometry(.025,.045,.012),
+    handMat
+  );
+  dot.position.set(
+    Math.sin(a)*.235,
+    2.38+Math.cos(a)*.235,
+    -3.73
+  );
+  dot.rotation.z=-a;
+  scene.add(dot);
+}
+
+// ODAYA EK EŞYALAR: sağ duvar boyunca kapıya kadar uzanan kitaplık.
+// Arka yüzü sağ duvarla hizalıdır, kapı açıklığına taşmaz.
+const bookshelf=group(scene,3.82,0,1.55);
+const shelfDepth=4.55;
+box(bookshelf,.18,2.25,shelfDepth,M.dark,0,1.125,0);
+for(const y of [.18,.92,1.66,2.20]){
+  box(bookshelf,.72,.10,shelfDepth,M.wood,-.28,y,0);
+}
+const bookMats=[mat(0x6b302c),mat(0x304b5d),mat(0x857044),mat(0x45413b),mat(0x536247)];
+for(let shelf=0;shelf<3;shelf++){
+  for(let j=0;j<13;j++){
+    const bw=.12+((j+shelf)%2)*.025;
+    const z=-2.05+j*.34;
+    const book=box(bookshelf,bw,.43+(j%2)*.12,.25,bookMats[(j+shelf)%bookMats.length],-.48+j%2*.025,.43+shelf*.72,z);
+    book.rotation.z=(j%2?-.025:.018);
+  }
+}
+function makeBookLabel(title,color,z,y){
+  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;
+  const ctx=canvas.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,512,128);
+  ctx.fillStyle='#e7d9b8';ctx.font='bold 46px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(title,256,64,480);
+  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+  const label=new THREE.Mesh(new THREE.PlaneGeometry(.31,.085),new THREE.MeshBasicMaterial({map:texture}));
+  label.rotation.y=-Math.PI/2;label.position.set(-.604,y,z);bookshelf.add(label);
+}
+// Raflarda kullanıcının favori kitapları, sırt yazıları dışarı bakacak şekilde.
+makeBookLabel('BEYAZ GECELER','#542c32',-1.82,.49);
+makeBookLabel('TUTUNAMAYANLAR','#304b5d',-.92,.49);
+makeBookLabel('AFET','#857044',.00,1.21);
+makeBookLabel('RUS GECELERI','#45413b',.92,1.21);
+makeBookLabel('★ YANILMISIM TANRI VARMIS ★','#536247',1.82,1.93);
+// Yatağın üzerindeki tablo kaldırıldı. Viego temalı kılıç yatağın üstündeki
+// sol duvara 45 derece açıyla asıldı.
+viegoSword.position.set(-3.775,2.02,-2.18);
+viegoSword.rotation.set(0,Math.PI/2,-Math.PI/4);
+
+// Kahve kupasi ve kagitlar bilgisayar masasinin ustunde.
+const mug=group(computer,.38,1.07,.08);
+const mugMesh=new THREE.Mesh(new THREE.CylinderGeometry(.105,.085,.20,10),mat(0xaaa69b));
+mugMesh.position.y=.10;mug.add(mugMesh);
+const mugHandle=new THREE.Mesh(new THREE.TorusGeometry(.065,.018,6,10),mat(0xaaa69b));
+mugHandle.position.set(.105,.10,0);mug.add(mugHandle);
+const paper1=box(computer,.34,.012,.25,mat(0xc8c1b2),-.48,1.075,.10);
+paper1.rotation.y=.12;
+const paper2=box(computer,.29,.014,.21,mat(0x8e877a),-.43,1.09,.16);
+paper2.rotation.y=-.08;
+// Kagit uzerinde silik not cizgileri.
+for(let i=0;i<3;i++){
+  box(computer,.19,.003,.008,mat(0x77736b),-.48,1.084,.02+i*.055);
+}
+
+// Kapı yanındaki askılık: ceket artık askıya geçirilmiş ve askı kancasından sarkıyor.
+const coatHook=group(scene,1.72,1.72,3.78);
+box(coatHook,.58,.07,.09,M.dark,0,0,0);
+for(const hx of [-.19,.19]){
+  const hook=box(coatHook,.035,.19,.035,M.metal,hx,-.12,-.055);
+  hook.rotation.z=-.22;
+}
+// Ahşap elbise askısı, iki omuz kolu ve üst kancasıyla.
+const hanger=group(coatHook,0,-.22,-.10);
+box(hanger,.035,.22,.035,M.metal,0,.13,0);
+const hangerBar=box(hanger,.035,.035,.38,M.wood,0,.02,0);
+hangerBar.rotation.z=-.12;
+const hangerHook=new THREE.Mesh(new THREE.TorusGeometry(.055,.012,6,12,Math.PI*1.35),M.metal);
+hangerHook.position.set(0,.25,0);hanger.add(hangerHook);
+// Ceket gövdesi, omuzları askı kollarının altına oturur.
+const coat=group(coatHook,0,-.30,-.02);
+const coatMat=mat(0x343b43,{roughness:.94});
+box(coat,.48,.68,.13,coatMat,0,-.52,0);
+box(coat,.22,.24,.14,coatMat,0,-.12,0);
+const leftSleeve=box(coat,.17,.58,.14,coatMat,-.29,-.43,0);leftSleeve.rotation.z=-.18;
+const rightSleeve=box(coat,.17,.58,.14,coatMat,.29,-.43,0);rightSleeve.rotation.z=.18;
+box(coat,.018,.54,.012,mat(0x9b9b91),0,-.52,.073);
+for(const by of [-.34,-.53,-.72]){
+  const button=new THREE.Mesh(new THREE.SphereGeometry(.018,6,6),M.metal);button.position.set(.045,by,.082);coat.add(button);
+}
+// Yerdeki kova/sepet benzeri nesne kaldırıldı.
+// Duvara asılı sade takvim.
+const calendar=group(scene,-2.95,2.05,-3.88);
+box(calendar,.035,.72,.52,M.dark,0,0,0);
+box(calendar,.025,.62,.43,mat(0xe1d8c8),-.025,0,0);
+for(let row=0;row<4;row++) for(let col=0;col<4;col++){
+  box(calendar,.012,.035,.035,mat(0x77716a),-.008,-.18+row*.11,-.14+col*.09);
+}
+
+// SAKSI VE GİZLİ YÜZ
+const pot=group(scene,-3.05,0,1.55);
+const potMat=mat(0x8b4938);
+const soilMat=mat(0x30251d);
+
+const potBody=new THREE.Mesh(
+  new THREE.CylinderGeometry(.34,.25,.52,9,1),
+  potMat
+);
+potBody.position.y=.26;
+pot.add(potBody);
+
+// İsim etiketi kitaplığa bakan tarafta, yazı kitaplığa dönük.
+const roseTag=group(pot,.43,.12,0);
+roseTag.rotation.y=Math.PI/2;
+const tagPost=box(roseTag,.035,.22,.035,mat(0x49352a),0,-.08,0);
+const tagPlate=box(roseTag,.42,.19,.035,mat(0x3b2922),0,.045,0);
+const tagFace=new THREE.Mesh(
+  new THREE.PlaneGeometry(.37,.145),
+  new THREE.MeshBasicMaterial({map:(()=>{
+    const c=document.createElement('canvas'); c.width=512; c.height=200;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#d8c6a3'; ctx.fillRect(0,0,512,200);
+    ctx.strokeStyle='#70513a'; ctx.lineWidth=9; ctx.strokeRect(8,8,496,184);
+    ctx.fillStyle='#34251d'; ctx.font='bold 94px Georgia'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('rose',256,105);
+    return new THREE.CanvasTexture(c);
+  })(),transparent:false})
+);
+tagFace.position.set(0,.045,.021);
+roseTag.add(tagFace);
+
+const potRim=new THREE.Mesh(
+  new THREE.TorusGeometry(.32,.055,6,10),
+  mat(0x593329)
+);
+potRim.rotation.x=Math.PI/2;
+potRim.position.y=.51;
+pot.add(potRim);
+
+const soil=new THREE.Mesh(
+  new THREE.CircleGeometry(.285,10),
+  soilMat
+);
+soil.rotation.x=-Math.PI/2;
+soil.position.y=.515;
+pot.add(soil);
+
+const stem=box(pot,.065,.72,.065,mat(0x344d2d),0,.88,0);
+stem.rotation.z=-.12;
+// Dallanan ince saplar ve dikenimsi çıkıntılar
+for(let i=0;i<4;i++){
+  const branch=box(pot,.035,.32,.035,mat(0x3c5a32),Math.sin(i*1.57)*.12,1.02,Math.cos(i*1.57)*.1);
+  branch.rotation.z=(i-1.5)*.28;
+}
+
+for(let i=0;i<7;i++){
+  const leaf=new THREE.Mesh(new THREE.SphereGeometry(.19,6,4),mat(i%2?0x34532d:0x587d3c));
+  leaf.scale.set(.42,.2,1.45);
+  leaf.position.set(Math.sin(i*1.05)*.23,.72+i*.075,Math.cos(i*1.05)*.2);
+  leaf.rotation.set((i%3)*.16,(i*1.7),((i-3)*.22));
+  pot.add(leaf);
+  const vein=box(pot,.018,.012,.23,mat(0x82935a),leaf.position.x,leaf.position.y,leaf.position.z);
+  vein.rotation.y=leaf.rotation.y; vein.rotation.z=leaf.rotation.z;
+}
+// Solgun, katmanlı çiçek başı
+const flower=group(pot,0,1.22,0);
+const petalMats=[mat(0x7b2639),mat(0x9b3546),mat(0x57202f)];
+for(let ring=0;ring<3;ring++){
+  const count=ring===0?11:(ring===1?9:7);
+  for(let i=0;i<count;i++){
+    const a=i/count*Math.PI*2+(ring*.22);
+    const petal=new THREE.Mesh(new THREE.SphereGeometry(.13,6,4),petalMats[(i+ring)%3]);
+    petal.scale.set(ring===0?.72:.62,ring===0?.2:.24,ring===0?1.65:1.45);
+    petal.position.set(Math.cos(a)*(.12+ring*.065),ring*.025,Math.sin(a)*(.12+ring*.065));
+    petal.rotation.y=-a; petal.rotation.x=.18;
+    flower.add(petal);
+  }
+}
+const flowerCore=new THREE.Mesh(new THREE.IcosahedronGeometry(.105,1),mat(0xb28a48));
+flower.add(flowerCore);
+for(let i=0;i<6;i++){
+  const thorn=new THREE.Mesh(new THREE.ConeGeometry(.035,.16,5),mat(0x293b25));
+  const a=i/6*Math.PI*2; thorn.position.set(Math.cos(a)*.19,-.08,Math.sin(a)*.19); thorn.rotation.z=Math.cos(a)*.8; thorn.rotation.x=Math.sin(a)*.8; pot.add(thorn);
+}
+
+const plantFace=group(pot,0,.68,.29);
+const faceMat=new THREE.MeshBasicMaterial({color:0x050304});
+const eyeMat=new THREE.MeshBasicMaterial({color:0xe8dfc8});
+const socketMat=new THREE.MeshBasicMaterial({color:0x17090c});
+const irisMat=new THREE.MeshBasicMaterial({color:0x9d171e});
+
+const eyeL=new THREE.Mesh(
+  new THREE.SphereGeometry(.045,8,6),
+  eyeMat
+);
+const eyeR=eyeL.clone();
+
+eyeL.position.set(-.095,.08,.105); eyeR.position.set(.095,.08,.105);
+plantFace.add(eyeL,eyeR);
+for(const x of [-.095,.095]){
+  const socket=new THREE.Mesh(new THREE.SphereGeometry(.073,8,6),socketMat);
+  socket.position.set(x,.08,.078); socket.scale.set(1,.78,.35); plantFace.add(socket);
+  const iris=new THREE.Mesh(new THREE.SphereGeometry(.022,7,5),irisMat);
+  iris.position.set(x,.075,.146); plantFace.add(iris);
+  const glint=new THREE.Mesh(new THREE.SphereGeometry(.008,5,4),eyeMat);
+  glint.position.set(x-.008,.09,.164); plantFace.add(glint);
+}
+const mouth=new THREE.Mesh(new THREE.SphereGeometry(.07,8,6),faceMat);
+mouth.position.set(0,-.075,.108); mouth.scale.set(.72,1.35,.35); plantFace.add(mouth);
+const lip=new THREE.Mesh(new THREE.TorusGeometry(.073,.012,5,10),mat(0x6f2630));
+lip.position.set(0,-.075,.12); plantFace.add(lip);
+for(let i=0;i<5;i++){
+  const tooth=box(plantFace,.018,.035,.012,mat(0xc9bda4),-.04+i*.02,-.055,.145);
+}
+
+plantFace.visible=false;
+plantFace.scale.setScalar(.05);
+
+let waterCount=0;
+let faceReveal=0;
+let faceTriggered=false;
+
+function nearPot(){
+  return Math.hypot(player.x+3.05,player.z-1.55)<1.45;
+}
+
+function waterPot(){
+  if(waterCount>=3)return;
+
+  waterCount++;
+  hint.textContent='Saksının toprağı suyu emiyor...';
+
+  if(waterCount===3){
+    faceTriggered=true;
+    faceReveal=0;
+    plantFace.visible=true;
+    showSubtitle('Bir şey mi bekliyordun?');
+  }
+}
+
+function updatePot(dt){
+  if(plantFace.visible){
+    const cameraWorld=new THREE.Vector3();
+    camera.getWorldPosition(cameraWorld);
+    plantFace.lookAt(cameraWorld);
+  }
+  if(!faceTriggered)return;
+
+  faceReveal=Math.min(1,faceReveal+dt*1.25);
+  const t=THREE.MathUtils.smoothstep(faceReveal,0,1);
+
+  plantFace.position.y=.68+t*.58;
+  plantFace.scale.setScalar(.05+t*.95);
+
+  if(faceReveal>=1&&!plantFace.userData.spoke){
+    plantFace.userData.spoke=true;
+    showSubtitle('Sen adamsın len!');
+    // Çiçeğin yüzünü kameranın hemen önüne fırlat.
+    scene.attach(plantFace);
+    plantJumpActive=true;
+    plantJumpTime=0;
+    plantFace.visible=true;
+    plantFace.scale.setScalar(.08);
+    playScream();
+  }
+}
+
+function updatePlantJump(dt){
+  if(!plantJumpActive)return;
+  plantJumpTime+=dt;
+  camera.getWorldDirection(plantJumpForward);
+  const t=Math.min(plantJumpTime/.16,1);
+  const distance=THREE.MathUtils.lerp(1.35,.28,t*t);
+  plantFace.position.copy(camera.position).addScaledVector(plantJumpForward,distance);
+  plantFace.lookAt(camera.position);
+  plantFace.scale.setScalar(THREE.MathUtils.lerp(.08,2.8,t));
+  if(plantJumpTime>=.7){
+    plantJumpActive=false;
+    plantFace.visible=false;
+    pot.attach(plantFace);
+    plantFace.position.set(0,.68,.29);
+    plantFace.rotation.set(0,0,0);
+    plantFace.scale.setScalar(1);
+  }
+}
+
+// KADIN SİLÜETİ
+const woman=group(scene,-.55,0,-.1);
+
+const silhouetteMat=new THREE.MeshBasicMaterial({
+  color:0x030305,
+  transparent:true,
+  opacity:0,
+  side:THREE.DoubleSide,
+  depthWrite:false
+});
+
+const body=new THREE.Mesh(
+  new THREE.ConeGeometry(.43,1.5,7),
+  silhouetteMat
+);
+body.position.y=.95;
+woman.add(body);
+
+const head=new THREE.Mesh(
+  new THREE.SphereGeometry(.22,8,6),
+  silhouetteMat
+);
+head.position.y=1.85;
+head.scale.set(.8,1.2,.8);
+woman.add(head);
+
+const hair=new THREE.Mesh(
+  new THREE.ConeGeometry(.29,.7,7),
+  silhouetteMat
+);
+hair.position.set(0,1.62,-.03);
+hair.rotation.x=Math.PI;
+woman.add(hair);
+
+const lowerBody=new THREE.Mesh(
+  new THREE.ConeGeometry(.52,.7,7),
+  silhouetteMat
+);
+lowerBody.position.y=.4;
+woman.add(lowerBody);
+
+woman.visible=false;
+
+// OYUNCU
+const player={
+  x:0,
+  y:1.65,
+  z:2.8,
+  yaw:Math.PI,
+  pitch:0,
+  speed:2.5
+};
+
+camera.position.set(player.x,player.y,player.z);
+camera.rotation.set(0,player.yaw,0,'YXZ');
+
+const keys={};
+
+let started=false;
+let sleeping=false;
+let sleepAnimation=false;
+let waking=false;
+let sleepTime=0;
+let animationTime=0;
+let elapsed=0;
+let movementLocked=false;
+let scareTime=0;
+let scareActive=false;
+let scareTriggered=false;
+
+let sleepStartX=player.x;
+let sleepStartZ=player.z;
+let sleepStartYaw=player.yaw;
+let sleepStartPitch=player.pitch;
+
+let wakeStartYaw=player.yaw;
+let wakeStartPitch=player.pitch;
+
+const hint=document.getElementById('hint');
+const subtitle=document.getElementById('subtitle');
+const blink=document.getElementById('blink');
+
+let subtitleTimer=null;
+let audioContext=null;
+
+// SES
+function initAudio(){
+  if(!audioContext){
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(AC)audioContext=new AC();
+  }
+  if(audioContext?.state==='suspended')audioContext.resume();
+}
+
+// Backrooms floresan/duvar gıcırtısı: aralıklı, konumsuz ve düşük seviyeli ses.
+let backroomsCreakTimer=null;
+function playBackroomsCreak(){
+  if(!backroomsActive||!audioContext)return;
+  try{
+    const ctx=audioContext,now=ctx.currentTime;
+    const osc=ctx.createOscillator(),gain=ctx.createGain(),filter=ctx.createBiquadFilter();
+    osc.type='sawtooth';osc.frequency.setValueAtTime(105+Math.random()*55,now);
+    osc.frequency.exponentialRampToValueAtTime(38+Math.random()*18,now+1.15);
+    filter.type='lowpass';filter.frequency.value=420;
+    gain.gain.setValueAtTime(.0001,now);gain.gain.linearRampToValueAtTime(.035,now+.12);
+    gain.gain.exponentialRampToValueAtTime(.0001,now+1.25);
+    osc.connect(filter);filter.connect(gain);gain.connect(ctx.destination);
+    osc.start(now);osc.stop(now+1.3);
+  }catch(e){}
+  backroomsCreakTimer=setTimeout(playBackroomsCreak,6500+Math.random()*11500);
+}
+function startBackroomsCreaks(){
+  initAudio();if(backroomsCreakTimer)clearTimeout(backroomsCreakTimer);
+  backroomsCreakTimer=setTimeout(playBackroomsCreak,1800+Math.random()*3500);
+}
+function stopBackroomsCreaks(){if(backroomsCreakTimer){clearTimeout(backroomsCreakTimer);backroomsCreakTimer=null;}}
+
+let forestAmbience=null;
+function startForestAmbience(){
+  initAudio();
+  if(!audioContext||forestAmbience)return;
+  const ctx=audioContext, now=ctx.currentTime;
+  const master=ctx.createGain();
+  master.gain.setValueAtTime(.0001,now);
+  master.gain.linearRampToValueAtTime(.075,now+3.5);
+  master.connect(ctx.destination);
+  // Sürekli, yumuşak rüzgâr dokusu.
+  const length=ctx.sampleRate*4;
+  const buffer=ctx.createBuffer(1,length,ctx.sampleRate);
+  const data=buffer.getChannelData(0);
+  for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(.45+Math.random()*.55);
+  const wind=ctx.createBufferSource(); wind.buffer=buffer; wind.loop=true;
+  const windFilter=ctx.createBiquadFilter(); windFilter.type='lowpass'; windFilter.frequency.value=520;
+  const windGain=ctx.createGain(); windGain.gain.value=.34;
+  wind.connect(windFilter); windFilter.connect(windGain); windGain.connect(master); wind.start();
+  // Uzak gece böcekleri gibi düşük seviyeli, aralıklı tonlar.
+  const insect=ctx.createOscillator(); insect.type='sine'; insect.frequency.value=1850;
+  const insectGain=ctx.createGain(); insectGain.gain.value=.012;
+  const tremolo=ctx.createOscillator(); tremolo.type='sine'; tremolo.frequency.value=.23;
+  const tremoloGain=ctx.createGain(); tremoloGain.gain.value=.009;
+  tremolo.connect(tremoloGain); tremoloGain.connect(insectGain.gain);
+  insect.connect(insectGain); insectGain.connect(master);
+  insect.start(); tremolo.start();
+  forestAmbience={master,wind,insect,tremolo};
+}
+
+function typeSound(){
+  if(!audioContext)return;
+  const now=audioContext.currentTime;
+  const osc=audioContext.createOscillator();
+  const gain=audioContext.createGain();
+  const filter=audioContext.createBiquadFilter();
+  const ominous=stalkerDialogueActive;
+  osc.type=ominous?'square':'square';
+  osc.frequency.setValueAtTime(ominous?260+Math.random()*110:1250+Math.random()*450,now);
+  osc.frequency.exponentialRampToValueAtTime(ominous?75:500,now+(ominous?.075:.025));
+  filter.type='lowpass';filter.frequency.setValueAtTime(ominous?950:4200,now);
+  gain.gain.setValueAtTime(ominous?.095:.035,now);
+  gain.gain.exponentialRampToValueAtTime(.001,now+(ominous?.095:.035));
+  osc.connect(filter);filter.connect(gain);gain.connect(audioContext.destination);
+  osc.start(now);osc.stop(now+(ominous?.10:.04));
+  if(ominous&&Math.random()<.22){
+    const clack=audioContext.createOscillator(),cg=audioContext.createGain();
+    clack.type='triangle';clack.frequency.setValueAtTime(95+Math.random()*35,now+.025);
+    clack.frequency.exponentialRampToValueAtTime(38,now+.11);
+    cg.gain.setValueAtTime(.045,now+.025);cg.gain.exponentialRampToValueAtTime(.001,now+.12);
+    clack.connect(cg);cg.connect(audioContext.destination);clack.start(now+.025);clack.stop(now+.13);
+  }
+}
+
+function playWomanLaugh(){
+  if(!audioContext)return;
+
+  const now=audioContext.currentTime;
+  const master=audioContext.createGain();
+
+  master.gain.setValueAtTime(.0001,now);
+  master.gain.linearRampToValueAtTime(.2,now+.15);
+  master.gain.setValueAtTime(.2,now+2.2);
+  master.gain.exponentialRampToValueAtTime(.0001,now+3.4);
+
+  const delay=audioContext.createDelay();
+  delay.delayTime.value=.24;
+
+  const feedback=audioContext.createGain();
+  feedback.gain.value=.24;
+
+  delay.connect(feedback);
+  feedback.connect(delay);
+  delay.connect(master);
+  master.connect(audioContext.destination);
+
+  for(let i=0;i<8;i++){
+    const t=now+i*.34;
+    const osc=audioContext.createOscillator();
+    const gain=audioContext.createGain();
+    const filter=audioContext.createBiquadFilter();
+
+    osc.type=i%2?'triangle':'sawtooth';
+    osc.frequency.setValueAtTime(420+(i%3)*65,t);
+    osc.frequency.exponentialRampToValueAtTime(175+(i%2)*30,t+.24);
+
+    filter.type='lowpass';
+    filter.frequency.value=1050;
+
+    gain.gain.setValueAtTime(.0001,t);
+    gain.gain.linearRampToValueAtTime(.22,t+.045);
+    gain.gain.exponentialRampToValueAtTime(.0001,t+.3);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(master);
+    gain.connect(delay);
+
+    osc.start(t);
+    osc.stop(t+.32);
+  }
+}
+
+function playScream(){
+  if(!audioContext)return;
+
+  const now=audioContext.currentTime;
+  const master=audioContext.createGain();
+  const filter=audioContext.createBiquadFilter();
+
+  filter.type='bandpass';
+  filter.frequency.setValueAtTime(1450,now);
+  filter.frequency.exponentialRampToValueAtTime(850,now+1.15);
+  filter.Q.value=1.1;
+
+  master.gain.setValueAtTime(.0001,now);
+  master.gain.linearRampToValueAtTime(.9,now+.035);
+  master.gain.setValueAtTime(.78,now+.18);
+  master.gain.exponentialRampToValueAtTime(.0001,now+1.45);
+
+  filter.connect(master);
+  master.connect(audioContext.destination);
+
+  const osc=audioContext.createOscillator();
+  const gain=audioContext.createGain();
+
+  osc.type='sawtooth';
+  osc.frequency.setValueAtTime(980,now);
+  osc.frequency.exponentialRampToValueAtTime(320,now+.28);
+  osc.frequency.linearRampToValueAtTime(760,now+.55);
+  osc.frequency.exponentialRampToValueAtTime(240,now+1.4);
+
+  gain.gain.setValueAtTime(.0001,now);
+  gain.gain.linearRampToValueAtTime(.95,now+.025);
+  gain.gain.setValueAtTime(.9,now+.2);
+  gain.gain.exponentialRampToValueAtTime(.0001,now+1.45);
+
+  osc.connect(gain);
+  gain.connect(filter);
+
+  const lfo=audioContext.createOscillator();
+  const lfoGain=audioContext.createGain();
+
+  lfo.frequency.value=7;
+  lfoGain.gain.value=45;
+  lfo.connect(lfoGain);
+  lfoGain.connect(osc.frequency);
+
+  lfo.start(now);
+  lfo.stop(now+1.46);
+  osc.start(now);
+  osc.stop(now+1.46);
+
+  const noiseBuffer=audioContext.createBuffer(
+    1,audioContext.sampleRate*1.4,audioContext.sampleRate
+  );
+  const data=noiseBuffer.getChannelData(0);
+
+  for(let i=0;i<data.length;i++){
+    data[i]=(Math.random()*2-1);
+  }
+
+  const noise=audioContext.createBufferSource();
+  const ng=audioContext.createGain();
+  const nf=audioContext.createBiquadFilter();
+
+  noise.buffer=noiseBuffer;
+  nf.type='bandpass';
+  nf.frequency.value=1900;
+
+  ng.gain.setValueAtTime(.0001,now);
+  ng.gain.linearRampToValueAtTime(.24,now+.035);
+  ng.gain.exponentialRampToValueAtTime(.0001,now+1.25);
+
+  noise.connect(nf);
+  nf.connect(ng);
+  ng.connect(master);
+
+  ng.gain.linearRampToValueAtTime(.34,now+.025);
+  noise.start(now);
+  noise.stop(now+1.4);
+}
+
+// ALTYAZI
+function showSubtitle(message){
+  clearInterval(subtitleTimer);
+  subtitle.innerHTML='';
+  subtitle.classList.add('visible');
+
+  let index=0;
+  const characters=[...message];
+
+  subtitleTimer=setInterval(()=>{
+    if(index>=characters.length){
+      clearInterval(subtitleTimer);
+      return;
+    }
+
+    const char=characters[index];
+    const span=document.createElement('span');
+
+    span.className='subtitle-char';
+    span.textContent=char===' '?' ':char;
+    subtitle.appendChild(span);
+
+    if(char!==' '&&char!=='.'&&char!==',')typeSound();
+    index++;
+  },42);
+
+  clearTimeout(showSubtitle.hideTimer);
+
+  showSubtitle.hideTimer=setTimeout(()=>{
+    clearInterval(subtitleTimer);
+    subtitle.classList.remove('visible');
+  },Math.max(4500,message.length*42+2200));
+}
+
+// ETKİLEŞİM MESAFELERİ
+function nearBed(){
+  const dx=player.x+2.625;
+  const dz=player.z+.05;
+  return Math.abs(dx)<1.65&&Math.abs(dz)<1.65;
+}
+
+function nearDoor(){
+  return player.z>3.05&&Math.abs(player.x)<1.25;
+}
+
+let doorPressCount=0;
+let catScareTriggered=false;
+function triggerDoorCatScare(){
+  if(catScareTriggered)return;
+  catScareTriggered=true;
+  door.rotation.y=0;
+  hint.textContent="";
+  showSubtitle('Kaçamazsınn... Miyaww!');
+  const overlay=document.getElementById("catJumpscare");
+  overlay.classList.remove("show");
+  void overlay.offsetWidth;
+  overlay.classList.add("show");
+  try{playScareSound();}catch(e){}
+  setTimeout(()=>overlay.classList.remove("show"),680);
+}
+
+function nearComputer(){
+  // Hitbox masanin oda tarafinda, bilgisayarin karsisinda ve kapi alanindan uzakta.
+  return player.x>-2.55&&player.x<-1.05&&player.z>2.05&&player.z<2.68;
+}
+
+let coffeeTableLookCount=0;
+function nearCoffeeTable(){
+  return Math.hypot(player.x-2.62,player.z+1.92)<1.85;
+}
+
+function nearTeemoMushroom(){
+  return Math.hypot(player.x-.55,player.z+3.34)<1.15;
+}
+
+function triggerMushroom(){
+  if(mushroomUsed)return;
+  mushroomUsed=true;
+  mushroomEffectTime=10;
+  document.getElementById('mushroomTint').classList.add('active');
+  teemoMushroom.visible=false;
+  for(const puff of mushroomSmoke){puff.mesh.visible=true;puff.life=0;}
+  showSubtitle('Ne oluyor...? Başım dönüyor...');
+  hint.textContent='MANTAR PATLADI.';
+  try{playScareSound();}catch(e){}
+}
+function updateMushroomEffect(dt){
+  if(mushroomUsed&&mushroomEffectTime>0){
+    mushroomEffectTime=Math.max(0,mushroomEffectTime-dt);
+    const t=10-mushroomEffectTime;
+    camera.rotation.z=Math.sin(elapsed*2.4)*(.10+Math.sin(t*1.4)*.025);
+    camera.rotation.x+=Math.sin(elapsed*1.8)*.0018;
+    for(const person of tinyPeople){
+      person.mesh.visible=true;
+      person.mesh.rotation.y+=dt*person.spin;
+      person.mesh.position.y=person.baseY+Math.abs(Math.sin(elapsed*5.2+person.phase))*.10;
+      person.nextSpeech-=dt;
+      if(person.nextSpeech<=0){
+        let pick=Math.floor(Math.random()*tinyPhrases.length);
+        if(pick===person.phraseIndex)pick=(pick+1+Math.floor(Math.random()*(tinyPhrases.length-1)))%tinyPhrases.length;
+        person.phraseIndex=pick;drawTinyBubble(person.bubble,tinyPhrases[pick]);
+        person.speechTime=1.7+Math.random()*1.5;person.bubble.sprite.visible=true;
+        person.nextSpeech=2.2+Math.random()*3.8;
+      }
+      if(person.speechTime>0){
+        person.speechTime-=dt;
+        const fade=Math.min(1,person.speechTime/.35,(2.2-person.speechTime)/.25);
+        person.bubble.sprite.material.opacity=Math.max(0,Math.min(1,fade));
+        person.bubble.sprite.visible=person.bubble.sprite.material.opacity>.02;
+      }else{person.bubble.sprite.visible=false;person.bubble.sprite.material.opacity=0;}
+    }
+    for(const puff of mushroomSmoke){
+      puff.life+=dt;
+      const a=puff.phase+t*1.9;
+      puff.mesh.position.set(.55+Math.cos(a)*(.22+t*.09),.25+(puff.life%2.3)*.55,-3.34+Math.sin(a)*(.22+t*.09));
+      puff.mesh.scale.setScalar(.7+(puff.life%2.3)*.45);
+      puff.mesh.material.opacity=Math.max(0,.42-(puff.life%2.3)*.17);
+      if(puff.life>2.3)puff.mesh.visible=false;
+    }
+    if(mushroomEffectTime===0){
+      document.getElementById('mushroomTint').classList.remove('active');
+      camera.rotation.z=0;
+      for(const puff of mushroomSmoke)puff.mesh.visible=false;
+      for(const person of tinyPeople)person.mesh.visible=false;
+      hint.textContent='GÖRÜŞÜN NORMALE DÖNDÜ.';
+    }
+  }
+}
+
+function nearBookshelf(){
+  return Math.hypot(player.x-3.05,player.z-1.55)<1.45;
+}
+async function enterFullscreenFromInteraction(){
+  const target=document.documentElement;
+  if(!document.fullscreenElement){
+    const request=target.requestFullscreen||target.webkitRequestFullscreen;
+    if(request){try{const result=request.call(target);if(result&&result.catch)await result.catch(()=>{});}catch(_){}}
+  }
+}
+function interact(){
+  if(!started||sleeping||sleepAnimation||waking)return;
+
+  initAudio();
+
+  if(nearTeemoMushroom()){
+    if(!mushroomUsed)triggerMushroom();
+    else{showSubtitle('Mantar artık etkisini kaybetmiş.');hint.textContent='MANTAR TÜKENDİ.';}
+  }
+  else if(nearPot()){
+    waterPot();
+  }
+  else if(nearCoffeeTable()){
+    coffeeTableLookCount++;
+    if(coffeeTableLookCount===1){
+      showSubtitle('Dostum... Bu, Eren’in mega dürüm yeme yarışmasından kalma ödül.');
+      hint.textContent='KAHVE MASASINA BAKIYORSUN.';
+    }else{
+      showSubtitle('Çok baktım, yatmalıyım.');
+      hint.textContent='KAHVE MASASINDAN UZAKLAŞIYORSUN.';
+    }
+  }
+  else if(nearDoor()){
+    if(!catScareTriggered){
+      doorPressCount++;
+      if(doorPressCount>=40){
+        showSubtitle('Kapı yerinden kıpırdamıyor...');
+        triggerDoorCatScare();
+      }else{
+        showSubtitle('Kapı açılmıyor.');
+        hint.textContent='';
+      }
+    }else{
+      showSubtitle('Kapı hâlâ kapalı.');
+    }
+  }
+  else if(nearComputer()){
+    showSubtitle('Oyun yapmaktan ne anlıyorlar, anlamıyorum.');
+    hint.textContent='MASADAKİ BİLGİSAYARA BAKIYORSUN.';
+  }
+  else if(nearBookshelf()){
+    enterFullscreenFromInteraction();
+    showSubtitle('Kitapların sırtındaki yazılar karanlıkta güçlükle seçiliyor.');
+    hint.textContent='';
+  }
+  else if(nearBed()){
+    sleepAnimation=true;
+    animationTime=0;
+    movementLocked=true;
+
+    sleepStartX=player.x;
+    sleepStartZ=player.z;
+    sleepStartYaw=player.yaw;
+    sleepStartPitch=player.pitch;
+
+    scareTriggered=false;
+    scareActive=false;
+    scareTime=0;
+
+    woman.visible=false;
+    woman.scale.setScalar(1);
+    silhouetteMat.opacity=0;
+    blink.style.opacity='0';
+
+    hint.textContent='YATAĞINA UZANIYORSUN...';
+  }
+  else{
+    hint.textContent='ETKİLEŞİME GİREBİLECEĞİN BİR ŞEY YOK.';
+  }
+}
+
+// KLAVYE
+document.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='KeyC'){crouchBtn.classList.add('active');crouchBtn.textContent='KALK';}
+  if(e.code==='KeyP'&&!e.repeat&&forestActive&&!backroomsActive){sanity=1;showSubtitle('Akıl sağlığın kritik seviyeye düştü.');}
+  if(e.code==='KeyE'&&!e.repeat)interact();
+  if(e.code==='KeyQ'&&!e.repeat){
+    e.preventDefault();
+    zoomEnabled=!zoomEnabled;
+  }
+  if(e.code==='KeyF'&&!e.repeat){
+    if(started&&(forestActive||backroomsActive)&&!sleeping&&!waking&&!sleepAnimation){
+      e.preventDefault();
+      toggleFlashlight();
+    }
+  }
+});
+
+addEventListener('keyup',e=>{
+  keys[e.code]=false;
+  if(e.code==='KeyC'&&!keys.KeyC){crouchBtn.classList.remove('active');crouchBtn.textContent='EĞİL';}
+});
+
+addEventListener('mousemove',e=>{
+  if(!started||movementLocked||document.pointerLockElement!==renderer.domElement)return;
+
+  player.yaw-=e.movementX*.002;
+  player.pitch-=e.movementY*.0017;
+  player.pitch=THREE.MathUtils.clamp(player.pitch,-1.25,1.25);
+});
+
+renderer.domElement.addEventListener('click',()=>{
+  if(started&&!movementLocked&&matchMedia('(pointer:fine)').matches&&document.pointerLockElement!==renderer.domElement){
+    renderer.domElement.requestPointerLock();
+  }
+});
+
+// JOYSTICK
+const joy=document.getElementById('joystick');
+const stick=document.getElementById('stick');
+
+let joyId=null;
+let joyX=0;
+let joyY=0;
+
+function resetJoy(){
+  joyId=null;
+  joyX=0;
+  joyY=0;
+  stick.style.left='43px';
+  stick.style.top='43px';
+}
+
+function moveJoy(e){
+  const r=joy.getBoundingClientRect();
+
+  let dx=e.clientX-(r.left+r.width/2);
+  let dy=e.clientY-(r.top+r.height/2);
+
+  const max=43;
+  const len=Math.hypot(dx,dy);
+
+  if(len>max){
+    dx=dx/len*max;
+    dy=dy/len*max;
+  }
+
+  joyX=dx/max;
+  joyY=dy/max;
+
+  stick.style.left=(43+dx)+'px';
+  stick.style.top=(43+dy)+'px';
+}
+
+joy.addEventListener('pointerdown',e=>{
+  if(!started||movementLocked)return;
+  e.preventDefault();
+  joyId=e.pointerId;
+  joy.setPointerCapture(e.pointerId);
+  moveJoy(e);
+});
+
+joy.addEventListener('pointermove',e=>{
+  if(e.pointerId===joyId)moveJoy(e);
+});
+
+joy.addEventListener('pointerup',e=>{
+  if(e.pointerId===joyId)resetJoy();
+});
+
+joy.addEventListener('pointercancel',e=>{
+  if(e.pointerId===joyId)resetJoy();
+});
+
+// MOBİL BAKIŞ
+const lookArea=document.getElementById('lookArea');
+
+let lookId=null;
+let lastX=0;
+let lastY=0;
+
+lookArea.addEventListener('pointerdown',e=>{
+  if(!started||movementLocked)return;
+
+  lookId=e.pointerId;
+  lastX=e.clientX;
+  lastY=e.clientY;
+
+  lookArea.setPointerCapture(e.pointerId);
+});
+
+lookArea.addEventListener('pointermove',e=>{
+  if(e.pointerId!==lookId||!started||movementLocked)return;
+
+  player.yaw-=(e.clientX-lastX)*.007;
+  player.pitch-=(e.clientY-lastY)*.004;
+  player.pitch=THREE.MathUtils.clamp(player.pitch,-1.25,1.25);
+
+  lastX=e.clientX;
+  lastY=e.clientY;
+});
+
+function endLook(e){
+  if(e.pointerId===lookId)lookId=null;
+}
+
+lookArea.addEventListener('pointerup',endLook);
+lookArea.addEventListener('pointercancel',endLook);
+
+document.getElementById('interact').addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  interact();
+});
+
+const crouchBtn=document.getElementById('crouchBtn');
+crouchBtn.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  keys.KeyC=!keys.KeyC;
+  crouchBtn.classList.toggle('active',!!keys.KeyC);
+  crouchBtn.textContent=keys.KeyC?'KALK':'EĞİL';
+});
+
+// KORKU SAHNESİ
+const scareForward=new THREE.Vector3();
+let plantJumpActive=false;
+let plantJumpTime=0;
+const plantJumpForward=new THREE.Vector3();
+
+function triggerScare(){
+  if(scareTriggered)return;
+
+  scareTriggered=true;
+  scareActive=true;
+  scareTime=0;
+
+  woman.visible=true;
+  woman.scale.setScalar(.45);
+
+  playScream();
+  playWomanLaugh();
+}
+
+function updateScare(dt){
+  if(!scareActive)return;
+
+  scareTime+=dt;
+
+  const t=Math.min(scareTime/.4,1);
+  const distance=THREE.MathUtils.lerp(2.15,.22,t*t);
+  const scale=THREE.MathUtils.lerp(.45,2.7,t*t);
+
+  camera.getWorldDirection(scareForward);
+
+  woman.position.copy(camera.position).addScaledVector(scareForward,distance);
+  woman.position.y=0;
+  woman.lookAt(camera.position.x,0,camera.position.z);
+
+  woman.scale.setScalar(scale);
+  silhouetteMat.opacity=Math.min(scareTime/.12,1);
+
+  if(scareTime>=.7){
+    scareActive=false;
+    woman.visible=false;
+  }
+}
+
+// ORMAN SAHNESİ: PS1 GÖRÜNTÜ, 20 METRE GÖRÜŞ VE CHUNK SİSTEMİ
+const forestScene=new THREE.Scene();
+forestScene.background=new THREE.Color(0x10151b);
+forestScene.fog=new THREE.Fog(0x10151b,2.2,20);
+forestScene.add(new THREE.HemisphereLight(0x8795ad,0x171b16,.72));
+const forestMoon=new THREE.DirectionalLight(0x9eacc7,.72);
+forestMoon.position.set(-12,20,-9); forestScene.add(forestMoon);
+const forestAmbient=new THREE.AmbientLight(0x536078,.25); forestScene.add(forestAmbient);
+
+function pixelTexture(base,spots,repeat=4){
+  const cv=document.createElement('canvas'); cv.width=64; cv.height=64;
+  const cx=cv.getContext('2d'); cx.fillStyle=base; cx.fillRect(0,0,64,64);
+  for(let i=0;i<180;i++){
+    cx.fillStyle=spots[i%spots.length];
+    const x=(i*29+(i*i*7))%64, y=(i*17+(i*i*3))%64;
+    cx.fillRect(x,y,2+(i%4),2+(i%3));
+  }
+  const t=new THREE.CanvasTexture(cv); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter;
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(repeat,repeat); t.colorSpace=THREE.SRGBColorSpace; return t;
+}
+const groundTex=pixelTexture('#252d25',['#30392b','#171e1b','#48503a','#343329'],5);
+const barkTex=pixelTexture('#34291f',['#49382a','#1e1b19','#5a4631','#29251f'],2);
+const leafTex=pixelTexture('#1d3022',['#29452b','#101e19','#3d5030','#263727'],2);
+const rockTex=pixelTexture('#343a3b',['#4b5050','#242b30','#5a5b54','#303236'],2);
+const groundMat=new THREE.MeshLambertMaterial({map:groundTex,flatShading:true});
+const trunkMat=new THREE.MeshLambertMaterial({map:barkTex,flatShading:true});
+const leafMat=new THREE.MeshLambertMaterial({map:leafTex,flatShading:true});
+const rockMat=new THREE.MeshLambertMaterial({map:rockTex,flatShading:true});
+const CHUNK_SIZE=24, CHUNK_RADIUS=1;
+// SIFIR AKIL SAĞLIĞI: sonsuz hissi veren klasik Backrooms labirenti.
+
+// İki dakika sonra karşıya çıkan beyaz, yüzü seçilmeyen ruhani yardımcı.
+function createBackroomsGuide(){
+  const guide=new THREE.Group();
+  const white=new THREE.MeshBasicMaterial({color:0xf4f4ed,transparent:true,opacity:.92});
+  const body=new THREE.Mesh(new THREE.CapsuleGeometry(.34,.95,5,8),white);body.position.y=1.25;guide.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.29,12,10),white);head.position.y=2.12;guide.add(head);
+  const shadow=new THREE.Mesh(new THREE.CircleGeometry(.48,16),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.28}));shadow.rotation.x=-Math.PI/2;shadow.position.y=.025;guide.add(shadow);
+  guide.visible=false;backroomsScene.add(guide);return guide;
+}
+const backroomsScene=new THREE.Scene();
+backroomsScene.background=new THREE.Color(0x242116);
+backroomsScene.fog=new THREE.Fog(0x242116,9,31);
+backroomsScene.add(new THREE.HemisphereLight(0x8b8051,0x211d13,.30));
+const backLight=new THREE.PointLight(0xffefad,.28,13);backLight.position.set(0,3.55,0);backroomsScene.add(backLight);
+// Backrooms sahnesinde de çalışan el feneri ışıkları.
+const backroomsFlashlight=new THREE.SpotLight(0xeaf2ff,0,20,Math.PI/3,.22,1);
+const backroomsFlashlightFill=new THREE.PointLight(0xdce9ff,0,7,2);
+backroomsScene.add(backroomsFlashlight,backroomsFlashlight.target,backroomsFlashlightFill);
+const backroomsColliders=[];
+const backGraffitiTexts=[
+'BURADAN!','O BURADA!','SESSİZ OL!','KİMSEYE GÜVENME!','BUNLAR GERÇEK!','ZAMAN KAVRAMINI KAYBETME!',
+'YARDIM EDİN!','BURADA SIKIŞTIM!','KİMSE YOK MU!','NE ZAMANDIR BURADAYIM BİLMİYORUM!',
+'BURADAN BİR ÇIKIŞ YOK MU?','ONDAN KAÇ!','O HER YERDE!','BENİ BIRAKMIYOR!','ÖLMEK İSTEMİYORUM!',
+'IŞIKLARI TAKİP ETME!','ARKANA BAKMA!','AYAK SESLERİNİ SAY!','BU KORİDORU HATIRLAMIYORUM!',
+'KAPIYI AÇMA!','BURASI AYNI YER DEĞİL!','SAATİM DURDU!','DUVARLAR DEĞİŞİYOR!','BENİ DUYABİLİYOR MUSUN?',
+'BURAYA NASIL GELDİM?','SAKIN UYUMA!','SESİNİ DUYUYORUM!','ÇIKIŞ YALAN!','KOŞMA, SENİ DUYAR!','BİRİ BENİ İZLİYOR!'
+];
+function makeBackGraffiti(text){
+  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;
+  const ctx=canvas.getContext('2d');ctx.clearRect(0,0,512,128);
+  ctx.font='bold 44px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#090909';ctx.fillText(text,256,64,490);
+  const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;
+  // Sprite yerine duvara sabit düzlem kullan: yazı kameraya dönmez ve oyuncuyu takip etmez.
+  const material=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide});
+  const writing=new THREE.Mesh(new THREE.PlaneGeometry(4.2,1.05),material);
+  return writing;
+}
+const backroomsChunks=new Map();
+const BACK_CELL=8, BACK_CHUNK_CELLS=4, BACK_CHUNK_SIZE=BACK_CELL*BACK_CHUNK_CELLS;
+function backHash(x,z,salt=0){
+  let n=Math.imul(x+salt,374761393)+Math.imul(z-salt,668265263)|0;
+  n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967295;
+}
+function buildBackroomsChunk(cx,cz){
+  const key=`${cx},${cz}`;if(backroomsChunks.has(key))return;
+  const group=new THREE.Group();group.position.set(cx*BACK_CHUNK_SIZE,0,cz*BACK_CHUNK_SIZE);backroomsScene.add(group);
+  const floorMat=new THREE.MeshLambertMaterial({color:0x8c8155});
+  const wallMat=new THREE.MeshLambertMaterial({color:0xc9bd7e});
+  const ceilingMat=new THREE.MeshLambertMaterial({color:0xb7ad79});
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(BACK_CHUNK_SIZE,BACK_CHUNK_SIZE),floorMat);floor.rotation.x=-Math.PI/2;floor.position.set(BACK_CHUNK_SIZE/2,.0,BACK_CHUNK_SIZE/2);group.add(floor);
+  const ceiling=new THREE.Mesh(new THREE.PlaneGeometry(BACK_CHUNK_SIZE,BACK_CHUNK_SIZE),ceilingMat);ceiling.rotation.x=Math.PI/2;ceiling.position.set(BACK_CHUNK_SIZE/2,4,BACK_CHUNK_SIZE/2);group.add(ceiling);
+  const wallH=4,wallT=.34, colliders=[];
+  // Her hücrenin kenarı dünya koordinatına göre belirlenir. Böylece chunk sınırlarında duvarlar devam eder.
+  for(let ix=0;ix<BACK_CHUNK_CELLS;ix++)for(let iz=0;iz<BACK_CHUNK_CELLS;iz++){
+    const gx=cx*BACK_CHUNK_CELLS+ix,gz=cz*BACK_CHUNK_CELLS+iz;
+    const x=(ix+.5)*BACK_CELL,z=(iz+.5)*BACK_CELL;
+    const edges=[
+      // X yönündeki iki kenarı açık tut: her hücrede sonsuza uzanan bir geçiş kalır.
+      {on:false,px:x-BACK_CELL/2,pz:z,hx:wallT/2,hz:BACK_CELL/2+wallT/2},
+      {on:false,px:x+BACK_CELL/2,pz:z,hx:wallT/2,hz:BACK_CELL/2+wallT/2},
+      {on:backHash(gx,gz,23)>.39,px:x,pz:z-BACK_CELL/2,hx:BACK_CELL/2+wallT/2,hz:wallT/2},
+      {on:backHash(gx,gz+1,23)>.39,px:x,pz:z+BACK_CELL/2,hx:BACK_CELL/2+wallT/2,hz:wallT/2}
+    ];
+    for(let ei=0;ei<edges.length;ei++){const e=edges[ei];if(!e.on)continue;
+      const horizontal=e.hx>e.hz;
+      const wall=new THREE.Mesh(new THREE.BoxGeometry(horizontal?BACK_CELL+wallT:wallT,wallH,horizontal?wallT:BACK_CELL+wallT),wallMat);
+      wall.position.set(e.px,wallH/2,e.pz);group.add(wall);
+      colliders.push({x:cx*BACK_CHUNK_SIZE+e.px,z:cz*BACK_CHUNK_SIZE+e.pz,hx:e.hx+.18,hz:e.hz+.18});
+      // Grafitiler yalnızca seyrek duvarlarda, koridor boyunca aralıklı görünür.
+      if(backHash(gx,gz,91+ei)>.76){
+        const idx=Math.floor(backHash(gx,gz,137+ei)*backGraffitiTexts.length);
+        const graffiti=makeBackGraffiti(backGraffitiTexts[idx]);
+        graffiti.position.set(e.px+(horizontal?0:(ei===0?-.2:.2)),2.05,e.pz+(horizontal?(ei===2?-.2:.2):0));
+        graffiti.rotation.y=horizontal?0:Math.PI/2;group.add(graffiti);
+      }
+    }
+  }
+  // Floresanların çoğu bozuk; yalnızca yaklaşık beşte biri yanar.
+  for(let x=4;x<BACK_CHUNK_SIZE;x+=16)for(let z=4;z<BACK_CHUNK_SIZE;z+=16){
+    const gx=cx*BACK_CHUNK_CELLS+Math.floor(x/BACK_CELL),gz=cz*BACK_CHUNK_CELLS+Math.floor(z/BACK_CELL);
+    if(backHash(gx,gz,301)<.78)continue;
+    const panel=new THREE.Mesh(new THREE.BoxGeometry(2.5,.08,1.2),new THREE.MeshBasicMaterial({color:0xffe6a0}));panel.position.set(x,3.94,z);group.add(panel);
+    const light=new THREE.PointLight(0xffe9a0,.22,10);light.position.set(x,3.65,z);group.add(light);
+  }
+  backroomsChunks.set(key,{group,colliders});backroomsColliders.push(...colliders);
+}
+function updateBackroomsChunks(){
+  const cx=Math.floor(player.x/BACK_CHUNK_SIZE),cz=Math.floor(player.z/BACK_CHUNK_SIZE),keep=new Set();
+  for(let x=cx-2;x<=cx+2;x++)for(let z=cz-2;z<=cz+2;z++){const key=`${x},${z}`;keep.add(key);buildBackroomsChunk(x,z);}
+  for(const [key,data] of backroomsChunks){if(keep.has(key))continue;
+    backroomsScene.remove(data.group);data.group.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}});
+    backroomsChunks.delete(key);
+  }
+  backroomsColliders.length=0;for(const data of backroomsChunks.values())backroomsColliders.push(...data.colliders);
+}
+function buildBackrooms(){updateBackroomsChunks();}
+buildBackrooms();
+
+const forestChunks=new Map(), forestColliders=[];
+const forestSilhouettes=[];
+let stalkerCooldown=11;
+let stamina=100, sanity=100;
+let locomotionPhase=0, cameraBob=0;
+let crouchAmount=0;
+const staminaFill=document.getElementById("staminaFill"), sanityFill=document.getElementById("sanityFill");
+const staminaValue=document.getElementById("staminaValue"), sanityValue=document.getElementById("sanityValue");
+const heartIcon=document.getElementById("heartIcon");
+let stalkerScareTime=0;
+let headDizzyTime=0;
+let stalkerScareActive=false;
+let stalkerLookTarget=null;
+let stalkerScareMesh=null;
+let stalkerScareStartX=0,stalkerScareStartZ=0;
+let backroomsActive=false;
+let stalkerDialogueActive=false;
+let stalkerDialogueTimers=[];
+let backroomsEncounterTime=0;
+let backroomsEncounterStarted=false;
+let backroomsEncounterStep=0;
+let backroomsEncounterStepTime=0;
+let backroomsEncounterWobble=0;
+let backroomsGuide=null;
+let forestActive=false;
+let cryingLevel=0, collapseStarted=false, collapseTime=0;
+const tearOverlay=document.getElementById("tearOverlay"), eyelids=document.getElementById("eyelids");
+const dummy=new THREE.Object3D();
+const trunkGeo=new THREE.CylinderGeometry(.32,.48,1,5);
+const crownGeo=new THREE.ConeGeometry(2.2,4.2,5,1);
+// ORMAN YERLEŞİMLERİ: üç terk edilmiş köy, üç tekil bina, göller ve nehir kolları.
+const villageSites=[{x:-34,z:-28},{x:42,z:-31},{x:8,z:58}];
+const loneBuildingSites=[{x:31,z:18},{x:-47,z:34},{x:67,z:43}];
+const lakeSites=[{x:20,z:-18,r:18}];
+// Yapıların çevresinde ağaç üretme. Köy evlerinin her biri ayrı alan kaplar.
+const buildingFootprints=[];
+villageSites.forEach(site=>[[-5,-3],[4,-4],[-2,5],[6,4]].forEach(([dx,dz])=>buildingFootprints.push({x:site.x+dx,z:site.z+dz,r:4.6})));
+loneBuildingSites.forEach(site=>buildingFootprints.push({x:site.x,z:site.z,r:5.2}));
+const waterBlockCount={value:0,lastAt:0};
+const waterMessageForCount=n=>n<=5?'Muhtemelen yapmamalıyım...':n<=9?'':n<=14?'Ciddi misin?':n<=19?'Şaka mısın?!':'Hep aptal!';
+function addAbandonedHouse(parent,x,z,scale=1,seed=0){
+  if(lakeSites.some(l=>Math.hypot(x-l.x,z-l.z)<l.r+3.5))return;
+  const g=new THREE.Group();g.position.set(x,0,z);g.scale.setScalar(scale);
+  const wall=new THREE.Mesh(new THREE.BoxGeometry(4,2.5,3.5),new THREE.MeshLambertMaterial({color:seed%2?0x51463b:0x393b38}));wall.position.y=1.25;g.add(wall);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(3.1,1.8,4),new THREE.MeshLambertMaterial({color:0x292725}));roof.position.y=3.25;roof.rotation.y=Math.PI/4;g.add(roof);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(.75,1.65,.09),new THREE.MeshLambertMaterial({color:0x171817}));door.position.set(0,.82,1.79);g.add(door);
+  const windowMat=new THREE.MeshBasicMaterial({color:0x111719});
+  for(const wx of [-1.25,1.25]){const w=new THREE.Mesh(new THREE.BoxGeometry(.65,.7,.08),windowMat);w.position.set(wx,1.55,1.8);g.add(w);}
+  // Kırık tahta parçaları ve bacası yapıya terk edilmiş görünüm verir.
+  const plank=new THREE.Mesh(new THREE.BoxGeometry(1.8,.12,.16),new THREE.MeshLambertMaterial({color:0x211d19}));plank.position.set(1.4,.18,2.1);plank.rotation.z=-.22;g.add(plank);
+  parent.add(g);forestColliders.push({x,z,r:2.25*scale,chunkKey:`${Math.floor(x/CHUNK_SIZE)},${Math.floor(z/CHUNK_SIZE)}`});
+}
+function addVillage(parent,site,index){
+  const offsets=[[-5,-3],[4,-4],[-2,5],[6,4]];
+  offsets.forEach((o,i)=>addAbandonedHouse(parent,site.x+o[0],site.z+o[1],i===0?1.05:.78,index*7+i));
+  if(!lakeSites.some(l=>Math.hypot(site.x-l.x,site.z-l.z)<l.r+2)){
+    const well=new THREE.Mesh(new THREE.CylinderGeometry(.75,.9,.65,8),rockMat);well.position.set(site.x, .32,site.z);parent.add(well);
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(.08,.1,2.2,5),trunkMat);post.position.set(site.x+2,1.1,site.z-1);parent.add(post);
+  }
+}
+function addLake(parent,site){
+  const water=new THREE.Mesh(new THREE.CircleGeometry(site.r,20),new THREE.MeshBasicMaterial({color:0x172f39,transparent:true,opacity:.88,side:THREE.DoubleSide}));
+  water.rotation.x=-Math.PI/2;water.position.set(site.x,-.035,site.z);parent.add(water);
+  const shore=new THREE.Mesh(new THREE.RingGeometry(site.r-.45,site.r+.65,20),rockMat);shore.rotation.x=-Math.PI/2;shore.position.set(site.x,-.075,site.z);parent.add(shore);
+}
+function riverPath(which,z){
+  if(which===0)return Math.sin(z*.035)*19+Math.sin(z*.012)*9;
+  if(which===1)return -31+Math.sin(z*.052+1.4)*8+Math.sin(z*.017)*5;
+  return 34+Math.sin(z*.026+2.1)*13+Math.sin(z*.071)*3;
+}
+function addRiverSection(parent,cx,cz){
+  // Üç farklı yatak biçimi. Her parça kıvrımın gerçek yönüne göre ayrı çizilir.
+  const styles=[
+    {id:0,width:2.25,color:0x18333d},
+    {id:1,width:1.45,color:0x1b3942},
+    {id:2,width:2.9,color:0x203b43}
+  ];
+  const z0=cz*CHUNK_SIZE, z1=z0+CHUNK_SIZE;
+  for(const st of styles){
+    const mid=(z0+z1)*.5;
+    const xa=riverPath(st.id,z0), xb=riverPath(st.id,z1);
+    // Dereyi tek bir dikdörtgen yerine çokgen şerit olarak üret.
+    const points=[];
+    const steps=6;
+    for(let i=0;i<=steps;i++){
+      const z=z0+(z1-z0)*i/steps, x=riverPath(st.id,z);
+      const before=riverPath(st.id,z-.25), after=riverPath(st.id,z+.25);
+      const dx=after-before, len=Math.hypot(dx,.5)||1;
+      const nx=.5/len, nz=-dx/len;
+      points.push([x+nx*st.width/2,z+nz*st.width/2]);
+    }
+    for(let i=steps;i>=0;i--){
+      const z=z0+(z1-z0)*i/steps, x=riverPath(st.id,z);
+      const before=riverPath(st.id,z-.25), after=riverPath(st.id,z+.25);
+      const dx=after-before, len=Math.hypot(dx,.5)||1;
+      const nx=.5/len, nz=-dx/len;
+      points.push([x-nx*st.width/2,z-nz*st.width/2]);
+    }
+    const verts=[];
+    points.forEach(([x,z])=>verts.push(x,-.045,z));
+    const indices=[];for(let i=1;i<points.length-1;i++)indices.push(0,i,i+1);
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setIndex(indices);geo.computeVertexNormals();
+    const mat=new THREE.MeshBasicMaterial({color:st.color,transparent:true,opacity:.9,side:THREE.DoubleSide});
+    parent.add(new THREE.Mesh(geo,mat));
+    // Kıyı çizgisi suyun şeklini takip eder, ancak çarpışma alanına dahil değildir.
+    const bankMat=new THREE.MeshBasicMaterial({color:0x42443a,transparent:true,opacity:.48,side:THREE.DoubleSide});
+    for(const side of [-1,1]){
+      const bankPoints=[];
+      for(let i=0;i<=steps;i++){
+        const z=z0+(z1-z0)*i/steps,x=riverPath(st.id,z);
+        bankPoints.push(new THREE.Vector3(x+side*(st.width/2+.22),-.07,z));
+      }
+      const curve=new THREE.CatmullRomCurve3(bankPoints);
+      parent.add(new THREE.Mesh(new THREE.TubeGeometry(curve,18,.11,4,false),bankMat));
+    }
+  }
+}
+function addForestBush(parent,x,z,scale,rot){
+  const bush=new THREE.Group();bush.position.set(x,0,z);bush.rotation.y=rot;bush.scale.setScalar(scale);
+  const mat=new THREE.MeshLambertMaterial({color:0x17251b,flatShading:true});
+  for(let i=0;i<5;i++){
+    const a=i*Math.PI*2/5;
+    const leaf=new THREE.Mesh(new THREE.IcosahedronGeometry(.48,0),mat);
+    leaf.position.set(Math.cos(a)*.34,.38+(i%2)*.12,Math.sin(a)*.34);
+    leaf.scale.set(1.15,.8,1);bush.add(leaf);
+  }
+  const center=new THREE.Mesh(new THREE.IcosahedronGeometry(.52,0),mat);center.position.y=.48;bush.add(center);
+  parent.add(bush);
+}
+function addWanderingSilhouette(parent,x,z,rnd,chunkKey){
+  const figure=new THREE.Group();
+  const dark=new THREE.MeshBasicMaterial({color:0x010204,transparent:true,opacity:.96,side:THREE.DoubleSide,depthWrite:false});
+  const hoodMat=new THREE.MeshBasicMaterial({color:0x000102,transparent:true,opacity:.99,side:THREE.DoubleSide,depthWrite:false});
+  // Uzun, düzensiz pelerin gövdesi ve kapüşonlu kafa.
+  const cloak=new THREE.Mesh(new THREE.ConeGeometry(.62,2.05,7,2),dark);cloak.position.y=1.05;cloak.scale.set(1,.95,.72);figure.add(cloak);
+  const chest=new THREE.Mesh(new THREE.CapsuleGeometry(.29,.82,4,6),hoodMat);chest.position.y=1.48;chest.scale.set(.9,1,.72);figure.add(chest);
+  const hood=new THREE.Mesh(new THREE.SphereGeometry(.31,8,7),hoodMat);hood.position.set(0,2.16,0);hood.scale.set(.88,1.18,.82);figure.add(hood);
+  const face=new THREE.Mesh(new THREE.SphereGeometry(.205,7,6),new THREE.MeshBasicMaterial({color:0x000000}));face.position.set(0,2.13,.16);face.scale.set(.85,1.05,.25);figure.add(face);
+  for(const side of [-1,1]){
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(.055,.105,1.18,5),dark);
+    arm.position.set(side*.39,1.38,.015);arm.rotation.z=side*(side<0?-.23:.34);figure.add(arm);
+    const hand=new THREE.Mesh(new THREE.ConeGeometry(.09,.38,5),dark);hand.position.set(side*.52,.77,.02);hand.rotation.z=Math.PI;figure.add(hand);
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.075,.13,.86,5),dark);leg.position.set(side*.17,.36,0);figure.add(leg);
+  }
+  // Pelerinin yırtık uçları silüete farklı bir dış hat verir.
+  for(let i=0;i<5;i++){
+    const rag=new THREE.Mesh(new THREE.ConeGeometry(.13,.62,4),dark);
+    rag.position.set((i-2)*.2,.28,-.12);rag.rotation.z=(i-2)*.13;figure.add(rag);
+  }
+  figure.position.set(x,0,z);figure.scale.setScalar(.9+rnd()*.35);figure.visible=false;parent.add(figure);
+  const angle=rnd()*Math.PI*2,distance=3+rnd()*5;
+  forestSilhouettes.push({mesh:figure,x,z,originX:x,originZ:z,targetX:x+Math.cos(angle)*distance,targetZ:z+Math.sin(angle)*distance,speed:.45+rnd()*.35,wait:rnd()*2,chunkKey,approachCooldown:10+rnd()*15,approachTime:0,fade:1});
+}
+const stalkerTaunts=[
+  ['Değersizsin!','Değerimi senin sözlerin belirlemiyor.'],
+  ['Kimse seni istemiyor!','Herkesin beni istemesi gerekmiyor. Ben kendi seçimlerimle varım.'],
+  ['Zavallı!','Korkmuş olabilirim ama bu beni zavallı yapmaz.'],
+  ['Zayıfsın!','Güçlü olmak hiç korkmamak değil. Korkuya rağmen ilerleyebilirim.'],
+  ['Kimse doğruyu söylemiyor!','O zaman duyduklarımı sorgularım. Her sözü gerçek kabul etmem.'],
+  ['Gerçeklerden kaçamazsın!','Kaçmıyorum. Ne olduğunu anlamaya çalışıyorum.'],
+  ['Gerçeği kabullen!','Kanıt olmadan senin anlattığını gerçek saymam.'],
+  ['Her zaman içindeyiz!','Beni tanımladığını iddia ediyorsun. Ama kim olduğunu bile bilmiyorum.'],
+  ['Sevmek mi? Ciddi misin?!','Sevmek zayıflık değil. Bir duygu, benim kararım.'],
+  ['Kaçamazsın!','Belki hemen çıkamam. Yine de bir yol bulabilirim.']
+];
+let stalkerTauntBag=[];
+function nextStalkerTaunt(){
+  if(!stalkerTauntBag.length){stalkerTauntBag=stalkerTaunts.map((_,i)=>i);for(let i=stalkerTauntBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[stalkerTauntBag[i],stalkerTauntBag[j]]=[stalkerTauntBag[j],stalkerTauntBag[i]];}}
+  return stalkerTauntBag.length?stalkerTaunts[stalkerTauntBag.pop()]:null;
+}
+function startStalkerDialogue(){
+  if(stalkerDialogueActive)return;
+  stalkerDialogueActive=true;
+  const pair=nextStalkerTaunt();
+  if(!pair){stalkerDialogueActive=false;return;}
+  showSubtitle(pair[0]);
+  // Silüetin sözü bittikten sonra kısa bir sessizlik bırak, oyuncu cevabı daha geç versin.
+  const responseDelay=Math.max(4300,pair[0].length*78+1900);
+  const t1=setTimeout(()=>showSubtitle(pair[1]),responseDelay);
+  const t2=setTimeout(()=>{stalkerDialogueActive=false;},responseDelay+Math.max(4200,pair[1].length*55+1800));
+  stalkerDialogueTimers.push(t1,t2);
+}
+
+function updateForestSilhouettes(dt){
+  if(!forestActive)return;
+  for(const s of forestSilhouettes){
+    const toPlayerX=player.x-s.x,toPlayerZ=player.z-s.z;
+    const playerDistance=Math.hypot(toPlayerX,toPlayerZ);
+    const playerAngle=Math.atan2(toPlayerX,toPlayerZ);
+    const angleDiff=Math.atan2(Math.sin(playerAngle-player.yaw),Math.cos(playerAngle-player.yaw));
+    const watched=playerDistance<22&&Math.abs(angleDiff)<.32;
+    // Görünmezken oyuncunun arkasına yaklaşır. Oyuncu bakmıyorken yer değiştirir.
+    if(s.approachTime>0){
+      s.approachTime-=dt;
+      if(s.approachTime<=0){
+        const behind=player.yaw+Math.PI+(Math.random()-.5)*.8;
+        const d=2.8+Math.random()*1.8;
+        s.x=player.x-Math.sin(behind)*d;s.z=player.z-Math.cos(behind)*d;
+        s.mesh.position.set(s.x,0,s.z);s.mesh.rotation.y=Math.atan2(player.x-s.x,player.z-s.z);
+        s.mesh.visible=false;s.fade=0;
+      }
+      continue;
+    }
+    if(s.fade<1){s.fade=Math.min(1,s.fade+dt*1.5);for(const m of s.mesh.children)if(m.material&&m.material.transparent)m.material.opacity=.96*s.fade;}
+    if(watched){s.mesh.rotation.y=playerAngle;s.wait=Math.max(s.wait,.7);continue;}
+    s.approachCooldown-=dt;
+    if(s.approachCooldown<=0&&playerDistance>3.8&&playerDistance<29&&Math.random()<.042){
+      s.mesh.visible=false;s.approachTime=.55+Math.random()*.4;s.approachCooldown=9+Math.random()*11;continue;
+    }
+    const dx=s.targetX-s.x,dz=s.targetZ-s.z,d=Math.hypot(dx,dz);
+    if(d<.35){
+      s.wait-=dt;
+      if(s.wait<=0){const a=Math.random()*Math.PI*2,r=3+Math.random()*7;s.targetX=player.x+Math.cos(a)*r;s.targetZ=player.z+Math.sin(a)*r;s.wait=1.5+Math.random()*3.5;}
+    }else{const step=Math.min(d,s.speed*dt);s.x+=dx/d*step;s.z+=dz/d*step;s.mesh.position.set(s.x,0,s.z);}
+    s.mesh.rotation.y=Math.atan2(player.x-s.x,player.z-s.z);
+  }
+  stalkerCooldown-=dt;
+  if(stalkerCooldown<=0&&!stalkerScareActive&&!scareActive&&!sleeping&&!waking&&!subtitle.classList.contains('visible')){
+    const nearby=forestSilhouettes.filter(s=>Math.hypot(s.x-player.x,s.z-player.z)<29);
+    if(nearby.length&&Math.random()<.72){
+      const s=nearby[Math.floor(Math.random()*nearby.length)];
+      for(const item of forestSilhouettes)item.mesh.visible=false;
+      // Silüet oyuncunun tam önünde belirir ve hızla kameraya yaklaşır.
+      const a=player.yaw+(Math.random()-.5)*.12;
+      const startDistance=3.8+Math.random()*.5;
+      s.x=player.x-Math.sin(a)*startDistance;s.z=player.z-Math.cos(a)*startDistance;
+      s.mesh.position.set(s.x,0,s.z);s.mesh.rotation.y=Math.atan2(player.x-s.x,player.z-s.z);
+      s.mesh.scale.setScalar(1.35);s.mesh.visible=true;
+      stalkerScareMesh=s.mesh;stalkerScareStartX=s.x;stalkerScareStartZ=s.z;
+      stalkerScareActive=true;stalkerScareTime=0;headDizzyTime=0;stalkerLookTarget=null;sanity=Math.max(0,sanity-(10+Math.random()*4));
+      initAudio();playScream();startStalkerDialogue();
+    }
+    const fearFactor=1-sanity/100;
+    stalkerCooldown=Math.max(3.2,13+Math.random()*12-fearFactor*8.5);
+  }
+}
+const existentialThoughts=[
+'Bunlar ne... Ben rüyada mıyım?',
+'Az önce gördüğüm şey gerçek olamaz.',
+'Buraya nasıl geldim? Yol neredeydi?',
+'Bir dakika... Burası tanıdık mı geliyor?',
+'Kendi sesim bile yabancı geliyor.',
+'Zaman mı durdu, yoksa ben mi kayboldum?',
+'Bu ağaçların sonu neden hiç gelmiyor?',
+'Birisi beni izliyor. Bunu hissediyorum.',
+'Gözlerime güvenemiyorum artık.',
+'Uyuyor olmalıyım. Uyanmam gerek.',
+'Ya uyanmak diye bir şey yoksa?',
+'Az önce aynı ağacın yanından geçmedim mi?',
+'Burada kaç dakikadır yürüyorum?',
+'Karanlık neden bu kadar sessiz?',
+'Bir şey hatırlamam gerekiyor ama ne?',
+'Ben buraya kendi isteğimle mi geldim?',
+'Bu sesler ormandan mı geliyor, aklımdan mı?',
+'Gerçeklik dediğim şey ne kadar gerçek?',
+'Neden her şey olduğundan daha uzak görünüyor?',
+'Bir çıkış olmalı. Her yerin bir çıkışı vardır.',
+'Ya bu orman hiç bitmiyorsa?',
+'Az önce arkamda bir gölge vardı.',
+'Kendime sakin ol diyorum ama inanmıyorum.',
+'Burada yalnız olduğumu kim söyledi?',
+'Bir an önce buradan çıkmalıyım.',
+'Ne zamandır kendi kendime konuşuyorum?',
+'Bunu daha önce yaşamış olabilir miyim?',
+'Adımlarımı duyuyorum ama yankı neden geç geliyor?',
+'Belki de gördüklerim zihnimin bir oyunu.',
+'Hayır... Bir şeyler kesinlikle yanlış.'
+];
+let thoughtBag=[],thoughtCooldown=5+Math.random()*5;
+let hasSeenSilhouette=false;
+let firstEncounterThoughts=[
+'Bir dakika... Bu ormana neden geldim?',
+'Buraya nasıl ulaştım? En son nerede olduğumu hatırlamıyorum.',
+'Bu ağaçların arasında bir yol olmalı. Peki ben hangi yoldan geldim?',
+'Burada bir şey aradığımı mı sanıyordum? Ne arıyordum?',
+'Telefonum çekmiyor. Zamanı bile takip edemiyorum.',
+'Bu kadar sessizlik normal değil. Orman neden hiç ses çıkarmıyor?',
+'Az önce aynı yere mi döndüm? Yön duygumu kaybediyorum.',
+'Birinin beni buraya getirdiğini mi düşünüyorum? Hayır, önce hatırlamalıyım.',
+'Burası gerçek. Ağaçlar gerçek. Peki anılarım neden bulanık?',
+'Buradan çıkınca ne yapacağımı bile bilmiyorum. Önce neden burada olduğumu bulmalıyım.'
+];
+let encounterThoughts=[
+'O şey neydi? Bir insan gibi duruyordu ama yüzü yoktu.',
+'Gölge ışığın düştüğü yerde oluşur. Peki ışık yokken bu neden hareket ediyor?',
+'Bana mı bakıyor, yoksa ben mi ona bir anlam yüklüyorum?',
+'Onu gördüğümde neden kendimi görmüş gibi hissettim?',
+'Belki de korktuğum şey onun yüzü değil, kendi içimde tanıdığım bir şey.',
+'Bir gölge beni izliyorsa, onu izleyen kim?',
+'Ben kimim? Burada gördüklerimden önce kimdim?',
+'Kendi yüzümü aynada tanıyorum. Peki kendi benliğimi gerçekten tanıyor muyum?',
+'Ya bu silüetler benim sakladığım düşüncelerin şekle bürünmüş hâliyse?',
+'Benden ne istiyorlar? Yoksa cevap vermemi mi bekliyorlar?',
+'Karanlıkta gördüğüm şey mi değişiyor, yoksa ben mi?',
+'Bir an için onun benim gibi durduğunu düşündüm. Bu düşünce neden bu kadar rahatsız edici?',
+'Gölge bedenime benziyor ama bana ait değil. Benliğimin sınırı nerede?',
+'Belki de kaçtığım şey ormanda değil. Belki onu yıllardır içimde taşıyorum.',
+'Beni tanıdığını söylüyor gibi. Oysa ben kendimi anlamakta zorlanıyorum.'
+];
+let firstThoughtIndex=0,encounterThoughtBag=[];
+function nextEncounterThought(){
+  if(!encounterThoughtBag.length&&encounterThoughts.length){encounterThoughtBag=encounterThoughts.map((_,i)=>i);for(let i=encounterThoughtBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[encounterThoughtBag[i],encounterThoughtBag[j]]=[encounterThoughtBag[j],encounterThoughtBag[i]];}}
+  return encounterThoughtBag.length?encounterThoughts[encounterThoughtBag.pop()]:null;
+}
+function nextExistentialThought(){
+  if(!thoughtBag.length&&existentialThoughts.length){thoughtBag=existentialThoughts.map((_,i)=>i);for(let i=thoughtBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[thoughtBag[i],thoughtBag[j]]=[thoughtBag[j],thoughtBag[i]];}}
+  return thoughtBag.length?existentialThoughts[thoughtBag.pop()]:null;
+}
+function updateStalkerEffects(dt){
+  if(!forestActive)return;
+  if(headDizzyTime>0){headDizzyTime=Math.max(0,headDizzyTime-dt);const strength=Math.min(headDizzyTime/1.1,1);camera.rotation.z=Math.sin(elapsed*13)*.19*strength;camera.rotation.x+=Math.sin(elapsed*7)*.018*strength;}
+  else if(!scareActive){camera.rotation.z=0;}
+  if(stalkerScareActive){
+    stalkerScareTime+=dt;
+    if(stalkerScareMesh){
+      const t=Math.min(stalkerScareTime/.34,1);
+      const eased=1-Math.pow(1-t,3);
+      stalkerScareMesh.position.set(
+        THREE.MathUtils.lerp(stalkerScareStartX,player.x-Math.sin(player.yaw)*.48,eased),
+        .0+eased*.08,
+        THREE.MathUtils.lerp(stalkerScareStartZ,player.z-Math.cos(player.yaw)*.48,eased)
+      );
+      stalkerScareMesh.scale.setScalar(1.35+eased*1.9);
+      stalkerScareMesh.rotation.y=Math.atan2(player.x-stalkerScareMesh.position.x,player.z-stalkerScareMesh.position.z);
+    }
+    if(stalkerScareTime>.58){stalkerScareActive=false;stalkerLookTarget=null;stalkerScareMesh=null;for(const s of forestSilhouettes){s.mesh.visible=false;s.mesh.scale.setScalar(.9);}}
+  }
+  thoughtCooldown-=dt;
+  // İlk silüet görülene kadar mekânı ve buraya geliş nedenini sorgular.
+  // İlk karşılaşmadan sonra iç konuşmalar gölgeler ve benlik üzerine yoğunlaşır.
+  if(!hasSeenSilhouette){
+    const firstVisible=forestSilhouettes.some(s=>s.mesh.visible&&Math.hypot(s.x-player.x,s.z-player.z)<23);
+    if(firstVisible){hasSeenSilhouette=true;thoughtCooldown=1.2;}
+  }
+  if(!stalkerScareActive&&!stalkerDialogueActive&&thoughtCooldown<=0&&!sleeping&&!waking&&!scareActive){
+    if(!hasSeenSilhouette&&firstThoughtIndex<firstEncounterThoughts.length){
+      showSubtitle(firstEncounterThoughts[firstThoughtIndex++]);
+      thoughtCooldown=10+Math.random()*7;
+    }else{
+      const thought=hasSeenSilhouette?nextEncounterThought():nextExistentialThought();
+      if(thought)showSubtitle(thought);
+      thoughtCooldown=hasSeenSilhouette?14+Math.random()*10:17+Math.random()*13;
+    }
+  }
+}
+function makeForestChunk(cx,cz){
+  const chunk=new THREE.Group(), ox=cx*CHUNK_SIZE, oz=cz*CHUNK_SIZE;
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(CHUNK_SIZE,CHUNK_SIZE),groundMat);
+  ground.rotation.x=-Math.PI/2; ground.position.set(ox,-.1,oz); chunk.add(ground);
+  let seed=(Math.imul(cx,73856093)^Math.imul(cz,19349663))>>>0;
+  const rnd=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+  const trees=[];
+  for(let i=0;i<42;i++){
+    const x=ox+(rnd()-.5)*(CHUNK_SIZE-2), z=oz+(rnd()-.5)*(CHUNK_SIZE-2);
+    // Oyuncunun başlangıç alanı, göl kıyısı ve yapı çevreleri boş kalır.
+    if(Math.hypot(x,z)<7.2)continue;
+    if(lakeSites.some(l=>Math.hypot(x-l.x,z-l.z)<l.r+3.2))continue;
+    if(buildingFootprints.some(b=>Math.hypot(x-b.x,z-b.z)<b.r))continue;
+    // Aynı parçada ağaçların birbirine ve daha önce oluşturulan parçalara girmesini önle.
+    if(trees.some(t=>Math.hypot(x-t.x,z-t.z)<5.4))continue;
+    if(forestColliders.some(c=>Math.hypot(x-c.x,z-c.z)<5.0))continue;
+    const h=6+rnd()*5, r=.75+rnd()*.55;
+    trees.push({x,z,h,r,rot:rnd()*Math.PI});
+    forestColliders.push({x,z,r:Math.max(.48,r*.72),chunkKey:`${cx},${cz}`});
+  }
+  if(trees.length){
+    const trunks=new THREE.InstancedMesh(trunkGeo,trunkMat,trees.length);
+    const crowns=new THREE.InstancedMesh(crownGeo,leafMat,trees.length);
+    trees.forEach((t,i)=>{
+      dummy.position.set(t.x,t.h/2,t.z); dummy.rotation.set(0,t.rot,0); dummy.scale.set(t.r,t.h,t.r); dummy.updateMatrix(); trunks.setMatrixAt(i,dummy.matrix);
+      dummy.position.set(t.x,t.h-1.3,t.z); dummy.scale.set(1.25,1.15,1.25); dummy.updateMatrix(); crowns.setMatrixAt(i,dummy.matrix);
+    });
+    trunks.instanceMatrix.needsUpdate=true; crowns.instanceMatrix.needsUpdate=true;
+    chunk.add(trunks,crowns);
+  }
+  // Çalı kümeleri, ağaç ve yapı alanlarından ayrı noktalara yerleştirilir.
+  for(let i=0;i<15;i++){
+    const bx=ox+(rnd()-.5)*(CHUNK_SIZE-2),bz=oz+(rnd()-.5)*(CHUNK_SIZE-2);
+    if(Math.hypot(bx,bz)<5.5)continue;
+    if(lakeSites.some(l=>Math.hypot(bx-l.x,bz-l.z)<l.r+2.5))continue;
+    if(buildingFootprints.some(b=>Math.hypot(bx-b.x,bz-b.z)<b.r+1.2))continue;
+    if(trees.some(t=>Math.hypot(bx-t.x,bz-t.z)<2.8))continue;
+    addForestBush(chunk,bx,bz,.65+rnd()*.55,rnd()*Math.PI*2);
+  }
+  // Ağaçların arasında kısa süre görünen, yavaşça yer değiştiren karanlık silüetler.
+  if(rnd()<.82){
+    const sx=ox+(rnd()-.5)*16,sz=oz+(rnd()-.5)*16;
+    const nearTree=trees.some(t=>Math.hypot(sx-t.x,sz-t.z)<3.2);
+    const nearBuilding=buildingFootprints.some(b=>Math.hypot(sx-b.x,sz-b.z)<b.r+2);
+    const nearLake=lakeSites.some(l=>Math.hypot(sx-l.x,sz-l.z)<l.r+2);
+    if(!nearTree&&!nearBuilding&&!nearLake&&Math.hypot(sx-player.x,sz-player.z)>9){
+      addWanderingSilhouette(chunk,sx,sz,rnd,`${cx},${cz}`);
+    }
+  }
+  if((Math.abs(cx*3+cz*7)%3)===0){
+    const rx=ox+(rnd()-.5)*18, rz=oz+(rnd()-.5)*18;
+    if(Math.hypot(rx,rz)>4.5&&!lakeSites.some(l=>Math.hypot(rx-l.x,rz-l.z)<l.r+2)){ 
+      const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(1.25,0),rockMat);
+      rock.position.set(rx,.42,rz); rock.scale.set(1.4,.65,1.1); chunk.add(rock);
+      forestColliders.push({x:rx,z:rz,r:1.35,chunkKey:`${cx},${cz}`});
+    }
+  }
+  villageSites.forEach((site,i)=>{if(Math.floor(site.x/CHUNK_SIZE)===cx&&Math.floor(site.z/CHUNK_SIZE)===cz)addVillage(chunk,site,i);});
+  loneBuildingSites.forEach((site,i)=>{if(Math.floor(site.x/CHUNK_SIZE)===cx&&Math.floor(site.z/CHUNK_SIZE)===cz)addAbandonedHouse(chunk,site.x,site.z,1.25,30+i);});
+  lakeSites.forEach(site=>{if(Math.floor(site.x/CHUNK_SIZE)===cx&&Math.floor(site.z/CHUNK_SIZE)===cz)addLake(chunk,site);});
+  // Dereler kaldırıldı. Haritada yalnızca tek büyük göl bulunur.
+  forestScene.add(chunk); forestChunks.set(`${cx},${cz}`,chunk);
+}
+function updateForestChunks(){
+  const cx=Math.floor(player.x/CHUNK_SIZE), cz=Math.floor(player.z/CHUNK_SIZE);
+  for(let x=cx-CHUNK_RADIUS;x<=cx+CHUNK_RADIUS;x++) for(let z=cz-CHUNK_RADIUS;z<=cz+CHUNK_RADIUS;z++){
+    const key=`${x},${z}`; if(!forestChunks.has(key))makeForestChunk(x,z);
+  }
+  for(const [key,chunk] of forestChunks){
+    const [x,z]=key.split(',').map(Number);
+    if(Math.abs(x-cx)>CHUNK_RADIUS||Math.abs(z-cz)>CHUNK_RADIUS){
+      forestScene.remove(chunk); forestChunks.delete(key);
+      for(let i=forestColliders.length-1;i>=0;i--)if(forestColliders[i].chunkKey===key)forestColliders.splice(i,1);
+      for(let i=forestSilhouettes.length-1;i>=0;i--)if(forestSilhouettes[i].chunkKey===key)forestSilhouettes.splice(i,1);
+    }
+  }
+}
+function enterForest(){
+  hasSeenSilhouette=false;firstThoughtIndex=0;thoughtBag=[];encounterThoughtBag=[];thoughtCooldown=4+Math.random()*3;
+  stalkerDialogueActive=false;
+  for(const timer of stalkerDialogueTimers)clearTimeout(timer);
+  stalkerDialogueTimers=[];
+  startForestAmbience();
+  waterBlockCount.value=0;waterBlockCount.lastAt=0;
+  backroomsActive=false;forestActive=true; stamina=100; sanity=100; cryingLevel=0;collapseStarted=false;collapseTime=0;tearOverlay.classList.remove("active");eyelids.classList.remove("closed");player.x=0; player.y=1.65; player.z=-45; player.pitch=0; player.yaw=Math.PI;
+  camera.position.set(player.x,player.y,player.z); camera.rotation.set(0,player.yaw,0,'YXZ');
+  updateForestChunks();
+  hint.textContent='WASD: İLERLE · SHIFT: KOŞ · C / CTRL: EĞİL · F: FENER · Q: ZOOM';
+  const flashlightBtn=document.getElementById('flashlightBtn');
+  flashlightOn=false;
+  flashlightAnim=0;
+  flashlightRig.scale.setScalar(1);
+  flashlightRig.rotation.set(-.12,-.10,-.10);
+  forestFlashlight.intensity=0;
+  flashlightFill.intensity=0;
+  flashlightRig.visible=false;
+  flashlightBtn.style.display='none';
+  flashlightBtn.classList.remove('on');
+  flashlightBtn.setAttribute('aria-label','El fenerini aç');
+  flashlightBtn.title='Feneri aç';
+  showSubtitle('Ormanın ortasındasın... Buraya nasıl geldin?');
+}
+// ELDE TUTULAN FENER: ışık kaynağı ve görünen model kameraya bağlıdır.
+const flashlightRig=new THREE.Group();
+flashlightRig.position.set(.34,-.29,-.48);
+flashlightRig.rotation.set(-.12,-.10,-.10);
+camera.add(flashlightRig);
+const flashlightBody=new THREE.Mesh(
+  new THREE.CylinderGeometry(.045,.065,.34,8),
+  new THREE.MeshStandardMaterial({color:0x252a30,roughness:.62,metalness:.55})
+);
+flashlightBody.rotation.x=Math.PI/2;
+flashlightBody.position.z=.06;
+flashlightRig.add(flashlightBody);
+const flashlightHead=new THREE.Mesh(
+  new THREE.CylinderGeometry(.075,.055,.10,10),
+  new THREE.MeshStandardMaterial({color:0x414953,roughness:.45,metalness:.65})
+);
+flashlightHead.rotation.x=Math.PI/2;
+flashlightHead.position.z=-.13;
+flashlightRig.add(flashlightHead);
+const flashlightLens=new THREE.Mesh(
+  new THREE.CircleGeometry(.057,12),
+  new THREE.MeshBasicMaterial({color:0xdcecff})
+);
+flashlightLens.position.z=-.184;
+flashlightRig.add(flashlightLens);
+flashlightRig.visible=false;
+
+// Işık kameranın tam önünden çıkar. Hedef kameraya bağlı olduğu için her yönde doğru döner.
+const forestFlashlight=new THREE.SpotLight(0xeaf2ff,0,20,Math.PI/3,.22,1.0);
+forestFlashlight.position.set(0,0,0);
+forestFlashlight.target.position.set(0,0,-1);
+forestFlashlight.castShadow=false;
+forestScene.add(forestFlashlight,forestFlashlight.target);
+// Yere ve yakındaki ağaçlara dolgu ışığı verir.
+const flashlightFill=new THREE.PointLight(0xdce9ff,0,7,2);
+flashlightFill.position.set(0,-.12,-.25);
+forestScene.add(flashlightFill);
+let flashlightOn=false;
+let flashlightAnim=0;
+let flashlightAudioContext=null;
+function playFlashlightSwitchSound(isOpening){
+  try{
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContextClass)return;
+    if(!flashlightAudioContext)flashlightAudioContext=new AudioContextClass();
+    const ctx=flashlightAudioContext;
+    if(ctx.state==='suspended')ctx.resume();
+    const now=ctx.currentTime;
+    // Mekanik düğme tıkırtısı ve kısa elektronik geçiş sesi.
+    const click=ctx.createOscillator();
+    const clickGain=ctx.createGain();
+    click.type='square';
+    click.frequency.setValueAtTime(isOpening?880:620,now);
+    click.frequency.exponentialRampToValueAtTime(isOpening?240:170,now+.045);
+    clickGain.gain.setValueAtTime(.0001,now);
+    clickGain.gain.exponentialRampToValueAtTime(.075,now+.004);
+    clickGain.gain.exponentialRampToValueAtTime(.0001,now+.065);
+    click.connect(clickGain);clickGain.connect(ctx.destination);
+    click.start(now);click.stop(now+.07);
+    const tone=ctx.createOscillator();
+    const toneGain=ctx.createGain();
+    tone.type='sine';
+    tone.frequency.setValueAtTime(isOpening?150:210,now+.025);
+    tone.frequency.exponentialRampToValueAtTime(isOpening?520:95,now+.19);
+    toneGain.gain.setValueAtTime(.0001,now+.025);
+    toneGain.gain.exponentialRampToValueAtTime(.045,now+.045);
+    toneGain.gain.exponentialRampToValueAtTime(.0001,now+.21);
+    tone.connect(toneGain);toneGain.connect(ctx.destination);
+    tone.start(now+.025);tone.stop(now+.22);
+  }catch(error){/* Ses desteklenmezse oyun çalışmaya devam eder. */}
+}
+function toggleFlashlight(){
+  if(!started||(!forestActive&&!backroomsActive))return;
+  flashlightOn=!flashlightOn;
+  playFlashlightSwitchSound(flashlightOn);
+  flashlightAnim=0;
+  forestFlashlight.intensity=flashlightOn?42:0;
+  flashlightFill.intensity=flashlightOn?5:0;
+  backroomsFlashlight.intensity=flashlightOn?42:0;
+  backroomsFlashlightFill.intensity=flashlightOn?5:0;
+  flashlightRig.visible=flashlightOn;
+  flashlightRig.scale.setScalar(flashlightOn ? 0.015 : 1);
+  if(flashlightOn){
+    flashlightRig.position.set(.48,-.48,-.38);
+    flashlightRig.rotation.set(-1.05,-.28,-.32);
+  }
+  flashlightLens.material.color.setHex(flashlightOn?0xffffff:0x87909a);
+  const button=document.getElementById('flashlightBtn');
+  button.classList.toggle('on',flashlightOn);
+  button.setAttribute('aria-label',flashlightOn?'El fenerini kapat':'El fenerini aç');
+  button.title=flashlightOn?'Feneri kapat':'Feneri aç';
+  hint.textContent=flashlightOn?'FENER AÇIK · F: KAPAT':'FENER KAPALI · F: AÇ';
+}
+const flashlightWorldPos=new THREE.Vector3();
+const flashlightWorldDir=new THREE.Vector3();
+function updateFlashlightAnimation(dt){
+  // Işıkları forestScene içinde tutuyoruz. Kamera hangi sahneyi render ederse etsin
+  // el fenerinin ışığı orman sahnesinde dünya koordinatlarıyla güncellenir.
+  camera.updateMatrixWorld(true);
+  camera.getWorldPosition(flashlightWorldPos);
+  camera.getWorldDirection(flashlightWorldDir);
+  forestFlashlight.position.copy(flashlightWorldPos);
+  forestFlashlight.target.position.copy(flashlightWorldPos).addScaledVector(flashlightWorldDir,18);
+  flashlightFill.position.copy(flashlightWorldPos).addScaledVector(flashlightWorldDir,.45);
+  backroomsFlashlight.position.copy(flashlightWorldPos);
+  backroomsFlashlight.target.position.copy(flashlightWorldPos).addScaledVector(flashlightWorldDir,18);
+  backroomsFlashlightFill.position.copy(flashlightWorldPos).addScaledVector(flashlightWorldDir,.45);
+  if(!flashlightOn)return;
+  // Fener aşağıdan kadraja yükselir, öne doğru döner ve eldeki konumuna oturur.
+  flashlightAnim=Math.min(1,flashlightAnim+dt/.48);
+  const t=flashlightAnim;
+  const ease=1-Math.pow(1-t,3);
+  const settle=Math.sin(t*Math.PI)*(1-t)*.035;
+  flashlightRig.scale.setScalar(.015+.985*ease);
+  flashlightRig.position.set(
+    .34+.14*(1-ease),
+    -.29-.19*(1-ease)+settle,
+    -.48+.10*(1-ease)
+  );
+  flashlightRig.rotation.set(
+    -1.05+.93*ease,
+    -.28+.18*ease,
+    -.32+.22*ease
+  );
+}
+document.getElementById('flashlightBtn').addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  e.stopPropagation();
+  if(started&&(forestActive||backroomsActive))toggleFlashlight();
+});
+// ÇARPIŞMA ALANLARI
+const obstacles=[
+  // Yatak ve komodin.
+  {minX:-4.05,maxX:-1.18,minZ:-3.95,maxZ:-.45},
+  {minX:-1.25,maxX:-.19,minZ:-3.90,maxZ:-3.00},
+  // Uzatilmis koltuk. Duvarlara yakin, oyuncunun gecis koridorunu kapatmaz.
+  {minX:1.36,maxX:3.90,minZ:-3.98,maxZ:-2.72},
+  // Mantar: komodine yaklastirildi, oyuncu modelin icinden gecemez.
+  {minX:.12,maxX:.98,minZ:-3.78,maxZ:-2.90},
+  // Koltuğun önündeki kahve masası.
+  {minX:1.82,maxX:3.42,minZ:-2.42,maxZ:-1.42},
+  // Kitaplik: yalnızca gerçek gövde ve raf derinliği çarpışma oluşturur.
+  // Önündeki z > 0.95 koridoru tamamen açık kalır.
+  {minX:3.18,maxX:4.02,minZ:-.88,maxZ:3.92},
+  // Bilgisayar masası ve ayakları. Etkileşim alanı masanın oda tarafında kalır.
+  {minX:-2.72,maxX:-.72,minZ:2.72,maxZ:3.78},
+  // Saksı ve bitki tabanı.
+  {minX:-3.48,maxX:-2.62,minZ:1.12,maxZ:1.98}
+];
+
+const playerRadius=.28;
+
+function forestCollides(x,z){
+  // Göl ve nehir suyu geçilemez. Oyuncu kıyıda durur.
+  let inWater=false;
+  for(const lake of lakeSites){if(Math.hypot(x-lake.x,z-lake.z)<lake.r-.25){inWater=true;break;}}
+  // Dereler kaldırıldığı için yalnızca büyük göl suyu çarpışma oluşturur.
+  if(inWater){
+    const now=performance.now();
+    if(now-waterBlockCount.lastAt>850){
+      waterBlockCount.lastAt=now;waterBlockCount.value++;
+      const message=waterMessageForCount(waterBlockCount.value);
+      if(message)showSubtitle(message);
+    }
+    return true;
+  }
+  for(const o of forestColliders){
+    const dx=x-o.x, dz=z-o.z;
+    const min=o.r+playerRadius;
+    if(dx*dx+dz*dz<min*min)return true;
+  }
+  return false;
+}
+
+function collides(x,z){
+  for(const o of obstacles){
+    if(
+      x+playerRadius>o.minX&&
+      x-playerRadius<o.maxX&&
+      z+playerRadius>o.minZ&&
+      z-playerRadius<o.maxZ
+    ){
+      return true;
+    }
+  }
+  return false;
+}
+
+function enterBackrooms(){
+  forestActive=false;backroomsActive=true;collapseStarted=false;collapseTime=0;movementLocked=false;
+  backroomsEncounterTime=0;backroomsEncounterStarted=false;backroomsEncounterStep=0;backroomsEncounterStepTime=0;backroomsEncounterWobble=0;
+  if(backroomsGuide)backroomsGuide.visible=false;
+  startBackroomsCreaks();
+  stalkerScareActive=false;stalkerLookTarget=null;stalkerDialogueActive=false;
+  tearOverlay.classList.remove('active');eyelids.classList.remove('closed');
+  flashlightOn=false;flashlightRig.visible=false;forestFlashlight.intensity=0;flashlightFill.intensity=0;backroomsFlashlight.intensity=0;backroomsFlashlightFill.intensity=0;
+  // Oyuncuyu hücrenin köşesine değil, duvarlardan uzak merkezine yerleştir.
+  // Önceki (0, 0) başlangıcı rastgele üretilen duvarlarla çakışabiliyordu.
+  player.x=4;player.y=1.65;player.z=4;player.pitch=0;player.yaw=Math.PI;
+  updateBackroomsChunks();
+  camera.position.set(player.x,player.y,player.z);camera.rotation.set(0,player.yaw,0,'YXZ');
+  cameraBob=0;crouchAmount=0;joyX=0;joyY=0;
+  hint.textContent='WASD: HAREKET · SHIFT: KOŞ · C: EĞİL · F: FENER';
+  const flashlightBtn=document.getElementById('flashlightBtn');
+  flashlightBtn.style.display='block';
+  flashlightBtn.classList.remove('on');
+  flashlightBtn.setAttribute('aria-label','El fenerini aç');
+  flashlightBtn.title='Feneri aç';
+  showSubtitle('Gözlerini açtığında sarı duvarlarla çevrili sonsuz bir labirenttesin.');
+}
+
+// BACKROOMS KARŞILAŞMASI: girişten 120 saniye sonra rehber belirir ve konuşur.
+function startBackroomsEncounter(){
+  if(backroomsEncounterStarted||!backroomsActive)return;
+  backroomsEncounterStarted=true;backroomsEncounterStep=0;backroomsEncounterStepTime=0;
+  backroomsGuide=backroomsGuide||createBackroomsGuide();
+  const forward=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw));
+  backroomsGuide.position.set(player.x+forward.x*5,0,player.z+forward.z*5);
+  backroomsGuide.lookAt(player.x,1.2,player.z);backroomsGuide.visible=true;
+  stalkerDialogueActive=true;movementLocked=true;
+  showSubtitle('Ben sizin ruhani yardımcınızım! Şu an çok kötü bir durumdasınız...');
+}
+function updateBackroomsEncounter(dt){
+  if(!backroomsActive)return;
+  if(!backroomsEncounterStarted){
+    backroomsEncounterTime+=dt;
+    if(backroomsEncounterTime>=120)startBackroomsEncounter();
+    return;
+  }
+  if(!stalkerDialogueActive)return;
+  backroomsEncounterStepTime+=dt;
+  const lines=[
+    {at:7,text:'Amaan neyse, herkes ölmeyecek mi zaten? Neyse...'},
+    {at:13,text:'Siz benimle dalga mı geçiyorsunuz lan!'},
+    {at:16,text:'Kendi zihninizde mahsur kaldınız.'},
+    {at:20,text:'Güler... Bekler... Pardon, sadece alışkanlık.'},
+    {at:27,text:'Size zamanı geldiğinde yardımcı olacağım.'},
+    {at:35,text:'Şimdilik bu kadar. Fazla ses çıkarmamanızı tavsiye ederim, bay bay!'}
+  ];
+  if(backroomsEncounterStep<lines.length&&backroomsEncounterStepTime>=lines[backroomsEncounterStep].at){
+    const line=lines[backroomsEncounterStep];showSubtitle(line.text);
+    if(backroomsEncounterStep===1)backroomsEncounterWobble=1.8;
+    backroomsEncounterStep++;
+  }
+  if(backroomsEncounterWobble>0){
+    backroomsEncounterWobble=Math.max(0,backroomsEncounterWobble-dt);
+    const amount=backroomsEncounterWobble>0?Math.sin(elapsed*48)*.045:0;
+    camera.rotation.z=amount;
+  }
+  if(backroomsEncounterStep>=lines.length&&backroomsEncounterStepTime>=40){
+    stalkerDialogueActive=false;movementLocked=false;
+    if(backroomsGuide)backroomsGuide.visible=false;
+  }
+}
+
+// AKIL SAĞLIĞI: düşüş ilerledikçe ağlama belirginleşir, sıfırda karakter çöker.
+function updateMentalState(dt){
+  if(!forestActive)return;
+  const target=sanity<=75?Math.min(1,(75-sanity)/75):0;
+  cryingLevel=THREE.MathUtils.damp(cryingLevel,target,1.8,dt);
+  tearOverlay.classList.toggle('active',sanity<76&&!collapseStarted);
+  tearOverlay.style.opacity=collapseStarted?'0':String(Math.min(.9,cryingLevel*.9));
+  if(sanity<=0&&!collapseStarted){
+    collapseStarted=true;collapseTime=0;movementLocked=true;stalkerScareActive=false;stalkerDialogueActive=false;
+    showSubtitle('Hayır... artık ayakta duramıyorum...');
+  }
+  if(collapseStarted){
+    collapseTime+=dt;
+    const t=THREE.MathUtils.smoothstep(collapseTime,0,4.8);
+    player.y=THREE.MathUtils.lerp(1.65,.24,t);
+    player.pitch=THREE.MathUtils.lerp(player.pitch,.92,t*.035);
+    camera.position.set(player.x,player.y,player.z);
+    camera.rotation.set(player.pitch,player.yaw,Math.sin(collapseTime*1.5)*.025*(1-t),'YXZ');
+    if(collapseTime>1.7)eyelids.classList.add('closed');
+    if(collapseTime>4.8){enterBackrooms();}
+  }
+}
+
+// ORMAN DURUM GOSTERGELERI
+function updateSurvivalHud(dt){
+  const hud=document.getElementById('survivalHud');
+  hud.style.display=forestActive?'flex':'none';
+  if(!forestActive)return;
+  // Ormanda kalmak zamanla akil sagligini daha hizli tuketir.
+  if(!collapseStarted&&!sleeping&&!waking) sanity=Math.max(0,sanity-0.22*dt);
+  const sprinting=(keys.ShiftLeft||keys.ShiftRight)&&(keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD||Math.abs(joyX)+Math.abs(joyY)>.12);
+  if(sprinting&&stamina>0&&!movementLocked&&!sleeping&&!waking){stamina=Math.max(0,stamina-29*dt);}
+  else{stamina=Math.min(100,stamina+(stamina<18?10:17)*dt);}
+  const pct=Math.round(stamina), spd=stamina<20?Math.max(.48,1.05-stamina/30):1.05;
+  staminaFill.style.width=pct+'%'; staminaValue.textContent=pct+'%';
+  heartIcon.style.animationDuration=spd+'s';
+  const fade=Math.max(.25,stamina/100); heartIcon.style.opacity=fade;
+  heartIcon.style.color=stamina<20?'#8d9aa3':stamina<45?'#55b9e8':'#65caff';
+  staminaFill.style.filter=stamina<20?'saturate(.55) brightness(.8)':'none';
+  const mp=Math.round(sanity);sanityFill.style.width=mp+'%';sanityValue.textContent=mp+'%';
+  sanityFill.style.filter=sanity<30?'brightness(1.3) saturate(1.4)':'none';
+}
+
+// HAREKET
+function updateMovement(dt){
+  if(!started||movementLocked||sleeping||sleepAnimation||waking)return;
+
+  let forward=0;
+  let side=0;
+
+  if(keys.KeyW)forward++;
+  if(keys.KeyS)forward--;
+  if(keys.KeyD)side++;
+  if(keys.KeyA)side--;
+
+  forward-=joyY;
+  side+=joyX;
+
+  const length=Math.hypot(forward,side);
+
+  if(length>1){
+    forward/=length;
+    side/=length;
+  }
+
+  const crouching=!!keys.KeyC;
+  crouchAmount=THREE.MathUtils.damp(crouchAmount,crouching?1:0,9,dt);
+  const sprintRequested=keys.ShiftLeft||keys.ShiftRight;
+  const actuallySprinting=sprintRequested&&stamina>0&&!crouching;
+  const speed=(actuallySprinting?4.2:player.speed)*(crouching?.48:1);
+
+  const dx=(
+    -Math.sin(player.yaw)*forward+
+    Math.cos(player.yaw)*side
+  )*speed*dt;
+
+  const dz=(
+    -Math.cos(player.yaw)*forward-
+    Math.sin(player.yaw)*side
+  )*speed*dt;
+
+  if(forestActive){
+    const nextX=player.x+dx, nextZ=player.z+dz;
+    if(!forestCollides(nextX,player.z))player.x=nextX;
+    if(!forestCollides(player.x,nextZ))player.z=nextZ;
+    updateForestChunks();
+  }else if(backroomsActive){
+    const nextX=player.x+dx,nextZ=player.z+dz;
+    const blocked=(x,z)=>backroomsColliders.some(c=>Math.abs(x-c.x)<c.hx+.28&&Math.abs(z-c.z)<c.hz+.28);
+    if(!blocked(nextX,player.z))player.x=nextX;
+    if(!blocked(player.x,nextZ))player.z=nextZ;
+    updateBackroomsChunks();
+  }else{
+    const nextX=THREE.MathUtils.clamp(player.x+dx,-3.65,3.65);
+    const nextZ=THREE.MathUtils.clamp(player.z+dz,-3.65,3.65);
+    if(!collides(nextX,player.z))player.x=nextX;
+    if(!collides(player.x,nextZ))player.z=nextZ;
+  }
+
+  const moving=length>.04;
+  if(moving){
+    locomotionPhase+=dt*(actuallySprinting?13.5:8.2);
+    const targetBob=Math.sin(locomotionPhase*2)*(actuallySprinting?.075:.032);
+    cameraBob=THREE.MathUtils.damp(cameraBob,targetBob,actuallySprinting?13:10,dt);
+  }else{
+    cameraBob=THREE.MathUtils.damp(cameraBob,0,8,dt);
+  }
+  camera.position.set(player.x,player.y+cameraBob-.72*crouchAmount,player.z);
+  const runTilt=moving&&actuallySprinting?Math.sin(locomotionPhase)*.012:0;
+  camera.rotation.set(player.pitch+runTilt,player.yaw,0,'YXZ');
+}
+
+// YATAĞA UZANMA VE UYANMA
+function updateSleep(dt){
+  if(sleepAnimation){
+    animationTime+=dt;
+
+    const t=THREE.MathUtils.smoothstep(animationTime/2.2,0,1);
+
+    // Yatağın üst yüzeyine göre konum
+    const targetX=-2.625;
+    const targetZ=-2.2;
+    const targetY=1.05;
+
+    player.x=THREE.MathUtils.lerp(sleepStartX,targetX,t);
+    player.z=THREE.MathUtils.lerp(sleepStartZ,targetZ,t);
+    player.y=THREE.MathUtils.lerp(1.65,targetY,t);
+
+    player.yaw=THREE.MathUtils.lerp(sleepStartYaw,Math.PI/2,t);
+    player.pitch=THREE.MathUtils.lerp(sleepStartPitch,1.25,t);
+
+    camera.position.set(player.x,player.y,player.z);
+    camera.rotation.set(player.pitch,player.yaw,0,'YXZ');
+
+    if(animationTime>=2.2){
+      sleepAnimation=false;
+      sleeping=true;
+      sleepTime=0;
+      hint.textContent='UYUYORSUN...';
+    }
+  }
+
+  if(sleeping){
+    sleepTime+=dt;
+
+    if(sleepTime>5&&!scareTriggered){
+      triggerScare();
+    }
+
+    if(sleepTime>9){
+      sleeping=false;
+      enterForest();
+      waking=true;
+      animationTime=0;
+      wakeStartYaw=player.yaw;
+      wakeStartPitch=player.pitch;
+      hint.textContent='UYANIYORSUN...';
+    }
+  }
+
+  if(waking){
+    animationTime+=dt;
+
+    const t=THREE.MathUtils.smoothstep(animationTime/1.8,0,1);
+
+    player.y=THREE.MathUtils.lerp(1.05,1.65,t);
+    player.pitch=THREE.MathUtils.lerp(1.25,0,t);
+    player.yaw=THREE.MathUtils.lerp(wakeStartYaw,Math.PI,t);
+
+    camera.position.set(player.x,player.y,player.z);
+    camera.rotation.set(player.pitch,player.yaw,0,'YXZ');
+
+    if(animationTime>=1.8){
+      waking=false;
+      movementLocked=false;
+
+      player.y=1.65;
+      player.pitch=0;
+
+      hint.textContent='WASD: İLERLE · SHIFT: KOŞ · C / CTRL: EĞİL · F: FENER';
+      document.getElementById('flashlightBtn').style.display='block';
+
+      camera.position.set(player.x,player.y,player.z);
+      camera.rotation.set(0,player.yaw,0,'YXZ');
+    }
+  }
+}
+
+function updatePotHint(){
+  if(!started||movementLocked||faceTriggered)return;
+
+  if(nearPot()){
+    hint.textContent='E / ETKİLEŞ: SAKSIYI SULA';
+  }
+}
+
+// OYUN DÖNGÜSÜ
+const clock=new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+
+  const dt=Math.min(clock.getDelta(),.05);
+  elapsed+=dt;
+  const targetFov=zoomEnabled?zoomCameraFov:normalCameraFov;
+  const nextFov=THREE.MathUtils.damp(camera.fov,targetFov,9,dt);
+  if(Math.abs(camera.fov-nextFov)>.001){camera.fov=nextFov;camera.updateProjectionMatrix();}
+
+  updateMovement(dt);
+  updateBackroomsEncounter(dt);
+  updateSurvivalHud(dt);
+  updateMentalState(dt);
+  updateSleep(dt);
+  updateScare(dt);
+  updatePot(dt);
+  updatePlantJump(dt);
+  updatePotHint();
+  updateFlashlightAnimation(dt);
+  updateForestSilhouettes(dt);
+  updateStalkerEffects(dt);
+  updateMushroomEffect(dt);
+
+  renderer.render(backroomsActive?backroomsScene:(forestActive?forestScene:scene),camera);
+}
+
+// TELEFONU SALLAYINCA TAM EKRAN
+let lastShakeAt=0;
+let motionEnabled=false;
+async function enableMotionShake(){
+  try{
+    if(typeof DeviceMotionEvent!=='undefined' && typeof DeviceMotionEvent.requestPermission==='function'){
+      const permission=await DeviceMotionEvent.requestPermission();
+      if(permission!=='granted')return;
+    }
+    if(motionEnabled)return;
+    motionEnabled=true;
+    window.addEventListener('devicemotion',e=>{
+      const a=e.accelerationIncludingGravity;
+      if(!a)return;
+      const magnitude=Math.hypot(a.x||0,a.y||0,a.z||0);
+      const now=Date.now();
+      if(magnitude>23 && now-lastShakeAt>1800){
+        lastShakeAt=now;
+        const target=document.documentElement;
+        if(!document.fullscreenElement){
+          const request=target.requestFullscreen||target.webkitRequestFullscreen;
+          if(request){try{const result=request.call(target);if(result&&result.catch)result.catch(()=>{});}catch(_){}}
+        }
+      }
+    },{passive:true});
+  }catch(_){}
+}
+
+// AÇILIŞ YÜKLEME EKRANI
+const loadingStatus=document.getElementById('loadingStatus');
+const playButton=document.getElementById('play');
+const loadingMessages=[
+  'Veriler alınıyor...',
+  'Asetler yerleştiriliyor...',
+  'Optimizasyon tamamlanıyor...',
+  'Son kontroller yapılıyor...',
+  'Oynamaya hazır!!'
+];
+let loadingStep=0;
+loadingStatus.textContent=loadingMessages[0];
+const loadingInterval=setInterval(()=>{
+  loadingStep++;
+  if(loadingStep<loadingMessages.length){
+    loadingStatus.textContent=loadingMessages[loadingStep];
+  }
+  if(loadingStep>=loadingMessages.length-1){
+    clearInterval(loadingInterval);
+    playButton.classList.add('ready');
+  }
+},2500);
+
+// BAŞLAT
+document.getElementById('play').addEventListener('click',()=>{
+  enableMotionShake();
+  initAudio();
+
+  started=true;
+  document.getElementById('start').style.display='none';
+
+  if(matchMedia('(pointer:fine)').matches){
+    renderer.domElement.requestPointerLock?.();
+  }
+});
+
+animate();
+
+window.addEventListener('resize',()=>{
+  renderer.setSize(W,H,false);
+  camera.aspect=W/H; camera.updateProjectionMatrix();
+});
+</script>
+</body>
+</html>
