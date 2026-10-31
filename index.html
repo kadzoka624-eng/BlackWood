@@ -402,8 +402,8 @@ function startMushroomPeopleSound(){
     mushroomPeopleAudio.pause();
     mushroomPeopleAudio.currentTime=0;
     const result=mushroomPeopleAudio.play();
-    if(result&&typeof result.catch==='function')result.catch(()=>{});
-  }catch(error){}
+    if(result&&typeof result.catch==='function')result.catch(error=>console.error('mens.wav oynatilamadi:',error));
+  }catch(error){console.error('mens.wav hatasi:',error);}
 }
 function stopMushroomPeopleSound(){
   try{mushroomPeopleAudio.pause();mushroomPeopleAudio.currentTime=0;}catch(error){}
@@ -1060,8 +1060,8 @@ function playScareSound(){
 // Tarayici sekmeyi arka plana alip sesi durdurursa ilk sonraki etkilesimde ac.
 function unlockHTMLAudio(audio){
   if(!audio)return;
-  // HTMLAudioElement seslerini de OYNA tiklamasi sirasinda tarayiciya tanit.
-  // Boylece daha sonra timer/jumpscare tetiklediginde autoplay engeline takilmaz.
+  // OYNA tiklamasi icinde her dosyaya dogrudan play cagrisi yaparak
+  // tarayicinin ses iznini al. Ses acilmadan once sessiz oynatilir.
   const wasMuted=audio.muted;
   const wasVolume=audio.volume;
   try{
@@ -1074,19 +1074,30 @@ function unlockHTMLAudio(audio){
         try{audio.currentTime=0;}catch(_){}
         audio.muted=wasMuted;
         audio.volume=wasVolume;
-      }).catch(()=>{
+      }).catch(error=>{
         audio.muted=wasMuted;
         audio.volume=wasVolume;
+        console.warn('Ses izni alinamadi:',audio.currentSrc||audio.src,error);
       });
     }else{
       audio.pause();audio.muted=wasMuted;audio.volume=wasVolume;
     }
-  }catch(_){audio.muted=wasMuted;audio.volume=wasVolume;}
+  }catch(error){
+    audio.muted=wasMuted;audio.volume=wasVolume;
+    console.warn('Ses baslatilamadi:',audio.currentSrc||audio.src,error);
+  }
 }
 function unlockGameAudio(){
   if(!started)return;
   initAudio();
-  [...jumpscareAudioPool,forestAmbienceAudio,backroomsAmbienceAudio,mushroomPeopleAudio,flashlightSwitchAudio].forEach(unlockHTMLAudio);
+  const allGameAudio=[...jumpscareAudioPool,forestAmbienceAudio,backroomsAmbienceAudio,mushroomPeopleAudio,flashlightSwitchAudio];
+  allGameAudio.forEach(audio=>{
+    if(!audio.dataset.errorHook){
+      audio.dataset.errorHook='1';
+      audio.addEventListener('error',()=>console.error('Ses dosyasi yuklenemedi:',audio.currentSrc||audio.src,audio.error));
+    }
+    unlockHTMLAudio(audio);
+  });
 }
 window.addEventListener('pointerdown',unlockGameAudio,{passive:true});
 window.addEventListener('touchstart',unlockGameAudio,{passive:true});
