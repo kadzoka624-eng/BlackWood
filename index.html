@@ -85,6 +85,8 @@ button{font-family:monospace;color:#fff;background:#24252b;border:1px solid #aaa
 }
 </style>
 <link rel="preload" href="./jumps1.wav" as="audio">
+<link rel="preload" href="./forest.wav" as="audio">
+<link rel="preload" href="./backrooms.wav" as="audio">
 </head>
 <body>
 
@@ -869,7 +871,6 @@ function updatePot(dt){
     plantFace.visible=true;
     plantFace.scale.setScalar(.08);
     playScareSound();
-    playScream();
   }
 }
 
@@ -1063,34 +1064,33 @@ function startBackroomsCreaks(){
 }
 function stopBackroomsCreaks(){if(backroomsCreakTimer){clearTimeout(backroomsCreakTimer);backroomsCreakTimer=null;}}
 
-let forestAmbience=null;
-function startForestAmbience(){
-  initAudio();
-  if(!audioContext||forestAmbience)return;
-  const ctx=audioContext, now=ctx.currentTime;
-  const master=ctx.createGain();
-  master.gain.setValueAtTime(.0001,now);
-  master.gain.linearRampToValueAtTime(.075,now+3.5);
-  master.connect(ctx.destination);
-  // Sürekli, yumuşak rüzgâr dokusu.
-  const length=ctx.sampleRate*4;
-  const buffer=ctx.createBuffer(1,length,ctx.sampleRate);
-  const data=buffer.getChannelData(0);
-  for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(.45+Math.random()*.55);
-  const wind=ctx.createBufferSource(); wind.buffer=buffer; wind.loop=true;
-  const windFilter=ctx.createBiquadFilter(); windFilter.type='lowpass'; windFilter.frequency.value=520;
-  const windGain=ctx.createGain(); windGain.gain.value=.34;
-  wind.connect(windFilter); windFilter.connect(windGain); windGain.connect(master); wind.start();
-  // Uzak gece böcekleri gibi düşük seviyeli, aralıklı tonlar.
-  const insect=ctx.createOscillator(); insect.type='sine'; insect.frequency.value=1850;
-  const insectGain=ctx.createGain(); insectGain.gain.value=.012;
-  const tremolo=ctx.createOscillator(); tremolo.type='sine'; tremolo.frequency.value=.23;
-  const tremoloGain=ctx.createGain(); tremoloGain.gain.value=.009;
-  tremolo.connect(tremoloGain); tremoloGain.connect(insectGain.gain);
-  insect.connect(insectGain); insectGain.connect(master);
-  insect.start(); tremolo.start();
-  forestAmbience={master,wind,insect,tremolo};
+// Ortam sesleri: her sahnede ilgili WAV dosyası sürekli döner.
+const forestAmbienceAudio=new Audio('./forest.wav');
+forestAmbienceAudio.loop=true;
+forestAmbienceAudio.preload='auto';
+forestAmbienceAudio.volume=0.48;
+const backroomsAmbienceAudio=new Audio('./backrooms.wav');
+backroomsAmbienceAudio.loop=true;
+backroomsAmbienceAudio.preload='auto';
+backroomsAmbienceAudio.volume=0.48;
+let activeAmbienceAudio=null;
+function stopEnvironmentAmbience(){
+  if(activeAmbienceAudio){
+    activeAmbienceAudio.pause();
+    activeAmbienceAudio.currentTime=0;
+    activeAmbienceAudio=null;
+  }
 }
+function startEnvironmentAmbience(audio){
+  if(activeAmbienceAudio===audio&&!audio.paused)return;
+  stopEnvironmentAmbience();
+  activeAmbienceAudio=audio;
+  audio.currentTime=0;
+  const result=audio.play();
+  if(result&&typeof result.catch==='function')result.catch(error=>console.warn('Ortam sesi oynatılamadı. WAV dosyasını index.html ile aynı klasöre ekleyin.',error));
+}
+function startForestAmbience(){startEnvironmentAmbience(forestAmbienceAudio);}
+function startBackroomsAmbience(){startEnvironmentAmbience(backroomsAmbienceAudio);}
 
 function typeSound(){
   if(!audioContext)return;
@@ -1614,8 +1614,6 @@ function triggerScare(){
   woman.visible=true;
   woman.scale.setScalar(.45);
 
-  playScream();
-  playWomanLaugh();
 }
 
 function updateScare(dt){
@@ -2002,7 +2000,7 @@ function updateForestSilhouettes(dt){
       s.mesh.scale.setScalar(1.35);s.mesh.visible=true;
       stalkerScareMesh=s.mesh;stalkerScareStartX=s.x;stalkerScareStartZ=s.z;
       stalkerScareActive=true;stalkerScareTime=0;headDizzyTime=0;stalkerLookTarget=null;sanity=Math.max(0,sanity-(10+Math.random()*4));
-      initAudio();playScareSound();playScream();startStalkerDialogue();
+      initAudio();playScareSound();startStalkerDialogue();
     }
     const fearFactor=1-sanity/100;
     stalkerCooldown=Math.max(3.2,13+Math.random()*12-fearFactor*8.5);
@@ -2199,6 +2197,7 @@ function enterForest(){
   stalkerDialogueActive=false;
   for(const timer of stalkerDialogueTimers)clearTimeout(timer);
   stalkerDialogueTimers=[];
+  stopBackroomsCreaks();
   startForestAmbience();
   waterBlockCount.value=0;waterBlockCount.lastAt=0;
   backroomsActive=false;forestActive=true; stamina=100; sanity=100; cryingLevel=0;collapseStarted=false;collapseTime=0;tearOverlay.classList.remove("active");eyelids.classList.remove("closed");player.x=0; player.y=1.65; player.z=-45; player.pitch=0; player.yaw=Math.PI;
@@ -2391,6 +2390,7 @@ function enterBackrooms(){
   forestActive=false;backroomsActive=true;collapseStarted=false;collapseTime=0;movementLocked=false;
   backroomsEncounterTime=0;backroomsEncounterStarted=false;backroomsEncounterStep=0;backroomsEncounterStepTime=0;backroomsEncounterWobble=0;
   if(backroomsGuide)backroomsGuide.visible=false;
+  startBackroomsAmbience();
   startBackroomsCreaks();
   stalkerScareActive=false;stalkerLookTarget=null;stalkerDialogueActive=false;
   tearOverlay.classList.remove('active');eyelids.classList.remove('closed');
