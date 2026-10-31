@@ -85,6 +85,7 @@ button{font-family:monospace;color:#fff;background:#24252b;border:1px solid #aaa
 }
 </style>
 <link rel="preload" href="./jumps1.wav" as="audio">
+<link rel="preload" href="./jumps6.wav" as="audio">
 <link rel="preload" href="./forest.wav" as="audio">
 <link rel="preload" href="./backrooms.wav" as="audio">
 </head>
@@ -387,6 +388,22 @@ for(let i=0;i<18;i++){
   puff.visible=false;scene.add(puff);mushroomSmoke.push({mesh:puff,phase:i/18* Math.PI*2,life:0});
 }
 let mushroomUsed=false,mushroomEffectTime=0;
+// Mantar patladiginda minik insanlar kaybolana kadar ortam sesi calar.
+const mushroomPeopleAudio=new Audio('./mens.wav');
+mushroomPeopleAudio.loop=true;
+mushroomPeopleAudio.preload='auto';
+mushroomPeopleAudio.volume=0.78;
+function startMushroomPeopleSound(){
+  try{
+    mushroomPeopleAudio.pause();
+    mushroomPeopleAudio.currentTime=0;
+    const result=mushroomPeopleAudio.play();
+    if(result&&typeof result.catch==='function')result.catch(()=>{});
+  }catch(error){}
+}
+function stopMushroomPeopleSound(){
+  try{mushroomPeopleAudio.pause();mushroomPeopleAudio.currentTime=0;}catch(error){}
+}
 
 // Mantar etkisi sirasinda gorunen minik, ziplayan insanlar.
 const tinyPeople=[];
@@ -999,10 +1016,10 @@ function initAudio(){
 }
 
 // Jumpscare sesleri GitHub deposunda index.html ile ayni klasorde bulunur.
-// jumps1.wav - jumps5.wav arasindan rastgele secilir. Tum sesler
+// jumps1.wav - jumps6.wav arasindan rastgele secilir. Tum sesler
 // kullanilmadan ayni ses yeniden secilmez.
 const jumpscareSoundFiles=[
-  './jumps1.wav','./jumps2.wav','./jumps3.wav','./jumps4.wav','./jumps5.wav'
+  './jumps1.wav','./jumps2.wav','./jumps3.wav','./jumps4.wav','./jumps5.wav','./jumps6.wav'
 ];
 const jumpscareAudioPool=jumpscareSoundFiles.map(src=>{
   const audio=new Audio(src);
@@ -1026,7 +1043,7 @@ function playScareSound(){
   const playPromise=sound.play();
   if(playPromise?.catch){
     playPromise.catch(error=>console.warn(
-      'Jumpscare sesi oynatilamadi. jumps1.wav ile jumps5.wav dosyalarini index.html ile ayni klasore yukleyin.',error
+      'Jumpscare sesi oynatilamadi. jumps1.wav ile jumps6.wav dosyalarini index.html ile ayni klasore yukleyin.',error
     ));
   }
 }
@@ -1329,7 +1346,7 @@ function triggerMushroom(){
   for(const puff of mushroomSmoke){puff.mesh.visible=true;puff.life=0;}
   showSubtitle('Ne oluyor...? Başım dönüyor...');
   hint.textContent='MANTAR PATLADI.';
-  try{playScareSound();}catch(e){}
+  startMushroomPeopleSound();
 }
 function updateMushroomEffect(dt){
   if(mushroomUsed&&mushroomEffectTime>0){
@@ -1369,6 +1386,7 @@ function updateMushroomEffect(dt){
       camera.rotation.z=0;
       for(const puff of mushroomSmoke)puff.mesh.visible=false;
       for(const person of tinyPeople)person.mesh.visible=false;
+      stopMushroomPeopleSound();
       hint.textContent='GÖRÜŞÜN NORMALE DÖNDÜ.';
     }
   }
