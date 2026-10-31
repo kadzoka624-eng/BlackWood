@@ -868,6 +868,7 @@ function updatePot(dt){
     plantJumpTime=0;
     plantFace.visible=true;
     plantFace.scale.setScalar(.08);
+    playScareSound();
     playScream();
   }
 }
@@ -1609,6 +1610,7 @@ function triggerScare(){
   scareActive=true;
   scareTime=0;
 
+  playScareSound();
   woman.visible=true;
   woman.scale.setScalar(.45);
 
@@ -2000,7 +2002,7 @@ function updateForestSilhouettes(dt){
       s.mesh.scale.setScalar(1.35);s.mesh.visible=true;
       stalkerScareMesh=s.mesh;stalkerScareStartX=s.x;stalkerScareStartZ=s.z;
       stalkerScareActive=true;stalkerScareTime=0;headDizzyTime=0;stalkerLookTarget=null;sanity=Math.max(0,sanity-(10+Math.random()*4));
-      initAudio();playScream();startStalkerDialogue();
+      initAudio();playScareSound();playScream();startStalkerDialogue();
     }
     const fearFactor=1-sanity/100;
     stalkerCooldown=Math.max(3.2,13+Math.random()*12-fearFactor*8.5);
