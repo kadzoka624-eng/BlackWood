@@ -1040,18 +1040,44 @@ function playScareSound(){
   const selectedIndex=jumpscareShuffleBag.pop();
   const sound=jumpscareAudioPool[selectedIndex];
   try{sound.pause();sound.currentTime=0;}catch(e){}
-  const playPromise=sound.play();
-  if(playPromise?.catch){
-    playPromise.catch(error=>console.warn(
-      'Jumpscare sesi oynatilamadi. jumps1.wav ile jumps6.wav dosyalarini index.html ile ayni klasore yukleyin.',error
-    ));
-  }
+  try{
+    const playPromise=sound.play();
+    if(playPromise&&typeof playPromise.catch==='function'){
+      playPromise.catch(error=>console.error('Jumpscare ses dosyasi oynatilamadi:',sound.src,error));
+    }
+  }catch(error){console.error('Jumpscare ses hatasi:',sound.src,error);}
 }
 
 // Tarayici sekmeyi arka plana alip sesi durdurursa ilk sonraki etkilesimde ac.
+function unlockHTMLAudio(audio){
+  if(!audio)return;
+  // HTMLAudioElement seslerini de OYNA tiklamasi sirasinda tarayiciya tanit.
+  // Boylece daha sonra timer/jumpscare tetiklediginde autoplay engeline takilmaz.
+  const wasMuted=audio.muted;
+  const wasVolume=audio.volume;
+  try{
+    audio.muted=true;
+    audio.volume=0;
+    const unlockPromise=audio.play();
+    if(unlockPromise&&typeof unlockPromise.then==='function'){
+      unlockPromise.then(()=>{
+        audio.pause();
+        try{audio.currentTime=0;}catch(_){}
+        audio.muted=wasMuted;
+        audio.volume=wasVolume;
+      }).catch(()=>{
+        audio.muted=wasMuted;
+        audio.volume=wasVolume;
+      });
+    }else{
+      audio.pause();audio.muted=wasMuted;audio.volume=wasVolume;
+    }
+  }catch(_){audio.muted=wasMuted;audio.volume=wasVolume;}
+}
 function unlockGameAudio(){
   if(!started)return;
   initAudio();
+  [...jumpscareAudioPool,forestAmbienceAudio,backroomsAmbienceAudio,mushroomPeopleAudio,flashlightSwitchAudio].forEach(unlockHTMLAudio);
 }
 window.addEventListener('pointerdown',unlockGameAudio,{passive:true});
 window.addEventListener('touchstart',unlockGameAudio,{passive:true});
@@ -2753,6 +2779,8 @@ document.getElementById('play').addEventListener('click',()=>{
   // Ses motorunu kullanicinin dogrudan tiklamasi sirasinda baslat.
   initAudio();
   started=true;
+  // Ses dosyalarinin oynatma iznini ilk kullanici tiklamasinda ac.
+  unlockGameAudio();
   enableMotionShake();
   document.getElementById('start').style.display='none';
 
