@@ -85,6 +85,10 @@ button{font-family:monospace;color:#fff;background:#24252b;border:1px solid #aaa
 }
 </style>
 <link rel="preload" href="./jumps1.wav" as="audio">
+<link rel="preload" href="./jumps2.wav" as="audio">
+<link rel="preload" href="./jumps3.wav" as="audio">
+<link rel="preload" href="./jumps4.wav" as="audio">
+<link rel="preload" href="./jumps5.wav" as="audio">
 <link rel="preload" href="./jumps6.wav" as="audio">
 <link rel="preload" href="./forest.wav" as="audio">
 <link rel="preload" href="./backrooms.wav" as="audio">
@@ -1039,8 +1043,13 @@ function playScareSound(){
   if(jumpscareShuffleBag.length===0)refillJumpscareBag();
   const selectedIndex=jumpscareShuffleBag.pop();
   const sound=jumpscareAudioPool[selectedIndex];
-  try{sound.pause();sound.currentTime=0;}catch(e){}
+  // Yeni jumpscare başladığında önceki jumpscare kaydını kes.
+  for(const other of jumpscareAudioPool){
+    if(other!==sound){try{other.pause();other.currentTime=0;}catch(e){}}
+  }
   try{
+    sound.pause();
+    sound.currentTime=0;
     const playPromise=sound.play();
     if(playPromise&&typeof playPromise.catch==='function'){
       playPromise.catch(error=>console.error('Jumpscare ses dosyasi oynatilamadi:',sound.src,error));
